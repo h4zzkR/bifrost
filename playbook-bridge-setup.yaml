@@ -1,0 +1,20 @@
+---
+- name: Set up XTLS/Xray
+  hosts: xray
+  become: true
+  vars:
+    xray_version: "v25.6.8"
+    xray_platform: "linux-64"
+    xray_path: "/opt/xray"
+  roles:
+    - xray
+
+- name: Fortify Xray server
+  hosts: xray
+  become: true
+  vars:
+    ssh_port: 42228 # port to listen to ssh connections
+    ssh_user: "h4zzkr" # username for new user with sudo rights
+    ssh_public_key_path: "~/.ssh/public/key/path.pub" # ssh auth public key
+  roles:
+    - security

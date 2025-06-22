@@ -5,108 +5,100 @@ with [Ansible](https://www.ansible.com/).
 
 ## Requirements
 
-1. A Linux machine with `systemd` (tested with DigitalOcean's 1vCPU-512MB-10GB Ubuntu 23.10 droplet)
-2. SSH config to access the Linux machine as a `root` (to make Ansible playbook work)
-3. Python & `pip`
-4. (Optional) [NekoRay/NekoBox](https://github.com/MatsuriDayo/nekoray) client (tested with v3.23)
+1. An Ubuntu 22.04 LTS machine
+2. SSH config to access the Ubuntu machine as a `root` (to make Ansible playbook work)
+3. Python & `pipx`
 
 ## Provision the Linux machine
 
-1. Clone the [repo](https://github.com/pilosus/xray-ansible)
+1. Clone the [repo](https://github.com/h4zzkR/bivrest)
 2. Change directory
 
 ```
-cd xray-ansible
+cd bivrest
 ```
 
 3. Install requirements
 
 ```
-pip install -r requirements.txt
+sudo apt update && sudo apt install python3-passlib
+pipx install ansible-core --include-deps
+pipx inject ansible-core passlib
 ```
 
-4. Add your Linux machine IP address to the Ansible inventory file, e.g. `~/.ansible/hosts`:
+4. Add your Linux machine IP address and root credentials to the encrypted Ansible inventory file, e.g. `~/.ansible/hosts`:
 
 ```
 [xray]
-xray-az-label-1 ansible_host=your.machine.ip.address
+xray-az-label-1 ansible_host=38.180.110.169 ansible_user=root ansible_ssh_pass=your_root_password ansible_become_pass=your_root_password ansible_connection=ssh
 ```
 
-5. Run the playbook with verbosity 1:
+Encrypt it:
 
 ```
-ansible-playbook -v --limit xray playbook-xray-setup.yaml \
-    --inventory ~/.ansible/hosts \
-    --user root
+ansible-vault encrypt ~/.ansible/hosts
 ```
 
-6. Note the `ansible_facts` from the step `xray: Decode and set Xray
-   variables from file`, you will need them to set up your client
-   
-## Variables
-
-The playbook is parametrized with the following variables:
-
-- `xray_version` - version string of the [Xray-core](https://github.com/XTLS/Xray-core/tags) [default `v1.8.1`]
-- `xray_platform` - platform the binary compiled for, see [Xray-core](https://github.com/XTLS/Xray-core/tags) releases for more platforms [default `linux-64`]
-- `xray_path` - path for the Xray-core installation [default `/opt/xray`]
-
-Use `-e variable=value` Ansible CLI argument to change default values, e.g.:
+5. Generate ssh key for the server auth:
 
 ```
-ansible-playbook -v --limit xray playbook-xray-setup.yaml \
+ssh-keygen -t ed25519 -f ~/.ssh/public/key/path -N ""
+```
+
+6. Modify `playbook-bridge-setup.yaml` if neccessary
+
+7. Create secrets to store new passwords for root and new ssh sudo user:
+
+```
+ansible-vault create secrets.yml
+```
+
+Contents must be:
+
+```
+# Contents of secrets.yml
+ssh_user_password: "YOUR_USER_NEW_PASSWORD"
+new_root_password: "YOUR_ROOT_NEW_PASSWORD"
+```
+
+8. Run the playbook with verbosity 1:
+
+```
+ansible-playbook -v --limit xray playbook-bridge-setup.yaml \
     --inventory ~/.ansible/hosts \
     --user root \
-    -e xray_version=v1.8.4
+    --extra-vars "@secrets.yml" \
+    --ask-vault-pass \
+    --ask-vault-password \
+    -e "ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
+```
+
+9. To connect to server via ssh key, first run this:
+
+```
+chmod 700 ~/.ssh; chmod 600 ~/.ssh/authorized_keys
+eval $(ssh-agent)
+ssh-add ~/.ssh/public/key/path
+```
+
+10. Remember link of this format from Ansible playbook logs:
+
+```
+vless://UUID@YOUR_SERVER_IP:443/?encryption=none&type=tcp&sni=SITE_DOMAIN&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk=YOUR_PUBLIC_KEY&packetEncoding=xudp
 ```
 
 ## Set up the client
 
-1. Download the [NekoRay](https://github.com/MatsuriDayo/nekoray/releases) client
-2. Unzip
-3. Change directory to unzipped client
-4. Run as `./launcher`
-5. Preferences -> Basic Settings -> Core -> sign box
-5. Server -> New profile -> Type VLESS
-6. Edit settings:
-
-```
-Common:
-Name: you profile name
-Address: your Linux machine IP address/DNS
-Port: 443
-
-VLESS:
-UUID: ansible_facts -> xray -> uuid
-Flow: xtls-rprx-vision
-
-Settings:
-Settings: tcp
-Security: tls
-Packet encoding: xudp
-
-TLS security settings:
-SNI: www.microsoft.com
-ALPN: h2
-
-TLS camouflage Settings:
-uTLS: chrome
-Reality Pbk: ansible_facts -> xray -> x25519_public
-Reaily Sid: ansible_facts -> xray -> short_id
-```
-
-7. Save settings
-8. Select the new profile in the list -> right mouse click -> Start
-9. Select the new profile in the list -> right mouse click -> Current Select -> URL test
-10. If test from the previous step is ok, then select the checkbox System proxy
-11. Enjoy
+1. Using Hiddify or Nekoray, add new connection with the help of link you got from Ansible logs
 
 # Credits
 
 The Ansible playbook and the `xray` role have been developed by
 [dmgening](https://github.com/dmgening) and productionized by
 [pilosus](https://github.com/pilosus).
+Scripts upgraded for new XRay version and VPS hardenings role added by
+[h4zzkR](https://github.com/h4zzkR).
 
 The playbook relies heavily on the
-[tutorial](https://habr.com/ru/articles/731608/) (in Russian; last
-accessed on 25.10.23) by MiraclePtr.
+[tutorial](https://habr.com/ru/articles/799751/) (in Russian; last
+accessed on 22.06.25) by MiraclePtr.

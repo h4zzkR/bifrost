@@ -1,0 +1,10 @@
+---
+- name: Restart SSHd
+  command: /bin/bash -c "systemctl daemon-reload && systemctl restart ssh.socket && systemctl restart ssh.service"
+  async: 10
+  poll: 2
+
+- name: Restart UFW
+  command: /bin/bash -c "ufw --force disable && ufw --force enable"
+  async: 10
+  poll: 2

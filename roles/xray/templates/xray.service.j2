@@ -1,14 +1,13 @@
 [Unit]
-Description=Xray Service
+Description=XRay Service
 Documentation=https://github.com/xtls
-After=network.target nss-lookup.target
 
 [Service]
-ExecStart={{ (xray_path, 'xray') | path_join }} run -config {{ (xray_path, 'config.json') | path_join }}
+Type=simple
 Restart=on-failure
-RestartPreventExitStatus=23
-LimitNPROC=10000
-LimitNOFILE=1000000
+RestartSec=30
+WorkingDirectory={{ xray_path }}
+ExecStart={{ (xray_path, 'xray') | path_join }} run -c {{ (xray_path, 'config.json') | path_join }}
 
 [Install]
 WantedBy=multi-user.target

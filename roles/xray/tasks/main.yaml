@@ -5,7 +5,7 @@
 - name: Update systemd service config
   ansible.builtin.template:
     src: xray.service.j2
-    dest: /etc/systemd/system/xray.service
+    dest: /usr/lib/systemd/system/xray.service
     owner: root
     group: root
     mode: '0644'
@@ -22,3 +22,23 @@
 
 - name: Configure XRay
   ansible.builtin.include_tasks: configure.yaml
+
+- name: Create XRay connection link stored to ~/xray_client_connect_link.txt
+  ansible.builtin.template:
+    src: xray_client_connect_link.txt.j2
+    dest: ~/xray_client_connect_link.txt
+    owner: "{{ ansible_user_id | default(ansible_user) }}"
+    group: "{{ ansible_user_id | default(ansible_user) }}"
+
+- name: Read the XRay connection link file
+  ansible.builtin.command: cat ~/xray_client_connect_link.txt
+  register: xray_link_content
+
+- name: Display the link (debug)
+  ansible.builtin.debug:
+    var: xray_link_content.stdout
+
+- name: Save content to a local variable/file (optional)
+  ansible.builtin.copy:
+    content: "{{ xray_link_content.stdout }}"
+    dest: xray_client_connect_link.txt
