@@ -1,7 +1,9 @@
-# xray-ansible: get XTLS/Xray server up & running using Ansible
+# bifrǫst: the Rainbow Bridge to Asgard is doomed to collapse in Ragnarok
 
 Get your [XTLS/Xray](https://github.com/xtls) server up and running
 with [Ansible](https://www.ansible.com/).
+
+![image](https://github.com/user-attachments/assets/3b8d8640-9665-43ec-8d9f-5965d3244c02)
 
 ## Requirements
 
@@ -11,7 +13,7 @@ with [Ansible](https://www.ansible.com/).
 
 ## Provision the Linux machine
 
-1. Clone the [repo](https://github.com/h4zzkR/bivrest)
+1. Clone the [repo](https://github.com/h4zzkR/bifrost)
 2. Change directory
 
 ```
@@ -96,7 +98,7 @@ vless://UUID@YOUR_SERVER_IP:443/?encryption=none&type=tcp&sni=SITE_DOMAIN&fp=chr
 The Ansible playbook and the `xray` role have been developed by
 [dmgening](https://github.com/dmgening) and productionized by
 [pilosus](https://github.com/pilosus).
-Scripts upgraded for new XRay version and VPS hardenings role added by
+Scripts were upgraded for new XRay version and VPS hardenings role was added by
 [h4zzkR](https://github.com/h4zzkR).
 
 The playbook relies heavily on the
