@@ -99,6 +99,65 @@ ssh -i ~/.ssh/europe_key -p PORT ssh_name@your.vps.ip.address
 
 1. Using Hiddify or Nekoray, add new connection with the help of link you got from Ansible logs
 
+
+# TODO
+
+Setup WARP redirect ("Сложно: переадресация на Cloudflare WARP" from article) in playbook.
+For creds generation use this: https://xtls.github.io/ru/document/level-2/warp.html#%D0%BF%D0%B5%D1%80%D0%B5%D0%BD%D0%B0%D0%BF%D1%80%D0%B0%D0%B2%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5-%D1%82%D1%80%D0%B0%D1%84%D0%B8%D0%BA%D0%B0-%D0%B2-%D0%BA%D0%B8%D1%82%D0%B0%D0%B8-%D1%87%D0%B5%D1%80%D0%B5%D0%B7-warp-%D0%BD%D0%B0-%D1%81%D0%B5%D1%80%D0%B2%D0%B5%D1%80%D0%B5
+
+Needed configs:
+
+```
+"outbounds": [
+    {
+      "protocol": "freedom",
+      "tag": "direct"
+    },
+    {
+      "protocol": "blackhole",
+      "tag": "block"
+    },
+    {
+       "protocol": "wireguard",
+       "tag": "warp",
+       "settings": {
+          "secretKey": "{{ PrivateKey }}",
+          "address": [
+            "{{ Address[0] }}",
+            "{{ Address[1] }}"
+          ],
+          "peers": [
+            {
+              "endpoint": "{{ Endpoint }}",
+              "publicKey": "{{ PublicKey }}"
+            }
+          ],
+          "mtu": 1280,
+          "reserved": [0, 0, 0],
+          "workers": 2,
+          "domainStrategy": "ForceIP"
+        }
+    }
+  ],
+  "routing": {
+    "rules": [
+        {
+            "type": "field",
+            "domain": ["geosite:openai", "geosite:category-gov-ru", "domain:ru"],
+            "outboundTag": "warp"
+        },
+        {
+            "type": "field",
+            "ip": ["geoip:ru"],
+            "outboundTag": "warp"
+        }
+    ]
+  }
+```
+
+Note: creds generation must be on not-russian server, use this for example: https://terminator.aeza.net/ru/
+
+
 # Credits
 
 The Ansible playbook and the `xray` role have been developed by

@@ -53,6 +53,32 @@
       APT::Periodic::Unattended-Upgrade "1"; 
       APT::Periodic::AutocleanInterval "7";
 
+# --- BBR Congestion Control (speed up) ---
+- name: Enable BBR congestion control
+  block:
+    - name: Set fq as default qdisc
+      sysctl:
+        name: net.core.default_qdisc
+        value: fq
+        state: present
+        reload: yes
+
+    - name: Set BBR as TCP congestion control
+      sysctl:
+        name: net.ipv4.tcp_congestion_control
+        value: bbr
+        state: present
+        reload: yes
+
+    - name: Ensure BBR is active
+      command: sysctl net.ipv4.tcp_congestion_control
+      register: bbr_status
+      changed_when: false
+
+    - name: Show current congestion control
+      debug:
+        msg: "Current TCP congestion control: {{ bbr_status.stdout }}"
+
 # --- SSH Hardening ---
 - name: Configure SSHd
   block:
