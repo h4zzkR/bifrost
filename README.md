@@ -32,7 +32,7 @@ pipx inject ansible-core passlib
 
 ```
 [xray]
-xray-az-label-1 ansible_host=38.180.110.169 ansible_user=root ansible_ssh_pass=your_root_password ansible_become_pass=your_root_password ansible_connection=ssh
+xray-az-label-1 ansible_host=your.vps.ip.address ansible_user=root ansible_ssh_pass=your_root_password ansible_become_pass=your_root_password ansible_connection=ssh
 ```
 
 Encrypt it:
@@ -87,6 +87,12 @@ ssh-add ~/.ssh/public/key/path
 
 ```
 vless://UUID@YOUR_SERVER_IP:443/?encryption=none&type=tcp&sni=SITE_DOMAIN&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk=YOUR_PUBLIC_KEY&packetEncoding=xudp
+```
+
+11. Connect to vps:
+
+```
+ssh -i ~/.ssh/europe_key -p PORT ssh_name@your.vps.ip.address
 ```
 
 ## Set up the client
