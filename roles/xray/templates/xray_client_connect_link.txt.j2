@@ -1,1 +1,2 @@
-vless://{{ xray.uuid }}@{{ ansible_host }}:443/?encryption=none&type=tcp&sni=files.pythonhosted.org&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk={{ xray.x25519_public }}&packetEncoding=xudp#Bifrost
+vless://{{ xray.uuid }}@{{ ansible_host }}:443/?encryption=none&type=tcp&sni=www.apple.com&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk={{ xray.x25519_public }}&sid={{ xray.short_id }}&packetEncoding=xudp#Bifrost-VLESS-Vision
+vless://{{ xray.uuid }}@{{ ansible_host }}:{{ xray_xhttp_port | default(8443) }}/?encryption=none&type=xhttp&path=%2F{{ xray.xhttp_path }}&sni=www.apple.com&fp=chrome&security=reality&pbk={{ xray.x25519_public }}&sid={{ xray.short_id }}#Bifrost-VLESS-XHTTP

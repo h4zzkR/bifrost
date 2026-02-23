@@ -1,0 +1,19 @@
+---
+- name: Install software-properties-common
+  ansible.builtin.apt:
+    name: software-properties-common
+    state: present
+
+- name: Add AmneziaWG PPA repository
+  ansible.builtin.apt_repository:
+    repo: ppa:amnezia/ppa
+    state: present
+    update_cache: yes
+
+- name: Install AmneziaWG kernel module and tools
+  ansible.builtin.apt:
+    name:
+      - amneziawg
+      - wireguard-tools
+    state: present
+    update_cache: yes

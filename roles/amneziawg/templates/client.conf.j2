@@ -1,0 +1,24 @@
+# AmneziaWG client configuration — Bifrost
+# Import this file in the AmneziaVPN app (Windows / macOS / iOS / Android)
+# or in any AmneziaWG-compatible client.
+
+[Interface]
+PrivateKey = {{ awg.client_private_key }}
+Address    = 10.66.66.2/32
+DNS        = 1.1.1.1, 8.8.8.8
+# AmneziaWG obfuscation parameters (must match server)
+Jc   = {{ awg.jc }}
+Jmin = {{ awg.jmin }}
+Jmax = {{ awg.jmax }}
+S1   = {{ awg.s1 }}
+S2   = {{ awg.s2 }}
+H1   = {{ awg.h1 }}
+H2   = {{ awg.h2 }}
+H3   = {{ awg.h3 }}
+H4   = {{ awg.h4 }}
+
+[Peer]
+PublicKey           = {{ awg.server_public_key }}
+Endpoint            = {{ ansible_host }}:{{ awg_port | default(51820) }}
+AllowedIPs          = 0.0.0.0/0, ::/0
+PersistentKeepalive = 25

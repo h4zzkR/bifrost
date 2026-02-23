@@ -1,11 +1,12 @@
 {
   "log": {
-    "loglevel": "debug"
+    "loglevel": "warning"
   },
   "inbounds": [
     {
       "port": 443,
       "protocol": "vless",
+      "tag": "vless-vision",
       "settings": {
         "clients": [
           {
@@ -20,26 +21,63 @@
         "security": "reality",
         "realitySettings": {
           "show": false,
-          "dest": "files.pythonhosted.org:443",
+          "dest": "www.apple.com:443",
           "xver": 0,
           "serverNames": [
-            "microsoft.com",
-            "www.microsoft.com"
+            "www.apple.com",
+            "apple.com"
           ],
           "privateKey": "{{ xray.x25519_private }}",
           "minClientVer": "",
           "maxClientVer": "",
-          "maxTimeDiff": 0,
-          "shortIds": [""]
+          "maxTimeDiff": 60000,
+          "shortIds": ["{{ xray.short_id }}"]
         }
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": [
-          "http",
-          "tls",
-          "quic"
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": true
+      }
+    },
+    {
+      "port": {{ xray_xhttp_port | default(8443) }},
+      "protocol": "vless",
+      "tag": "vless-xhttp",
+      "settings": {
+        "clients": [
+          {
+            "id": "{{ xray.uuid }}"
+          }
         ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "xhttp",
+        "security": "reality",
+        "xhttpSettings": {
+          "mode": "stream-one",
+          "path": "/{{ xray.xhttp_path }}",
+          "keepAliveInterval": 30
+        },
+        "realitySettings": {
+          "show": false,
+          "dest": "www.apple.com:443",
+          "xver": 0,
+          "serverNames": [
+            "www.apple.com",
+            "apple.com"
+          ],
+          "privateKey": "{{ xray.x25519_private }}",
+          "minClientVer": "",
+          "maxClientVer": "",
+          "maxTimeDiff": 60000,
+          "shortIds": ["{{ xray.short_id }}"]
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
         "routeOnly": true
       }
     }
@@ -47,7 +85,10 @@
   "outbounds": [
     {
       "protocol": "freedom",
-      "tag": "direct"
+      "tag": "direct",
+      "settings": {
+        "domainStrategy": "UseIPv4"
+      }
     },
     {
       "protocol": "blackhole",

@@ -1,20 +1,52 @@
 ---
-- name: Set up XTLS/Xray
-  hosts: xray
-  become: true
-  vars:
-    xray_version: "v25.6.8"
-    xray_platform: "linux-64"
-    xray_path: "/opt/xray"
-  roles:
-    - xray
+# ============================================================
+#  Bifrost — Universal VPN server provisioning
+#  Supported protocols: VLESS+Reality+XTLS-Vision, AmneziaWG
+#  Target OS: Ubuntu 22.04 LTS
+# ============================================================
 
-- name: Fortify Xray server
-  hosts: xray
+- name: Deploy VPN protocols
+  hosts: vpn
   become: true
+  gather_facts: true
+
   vars:
-    ssh_port: 42228 # port to listen to ssh connections
-    ssh_user: "h4zzkr" # username for new user with sudo rights
-    ssh_public_key_path: "~/.ssh/public/key/path.pub" # ssh auth public key
+    # ---- Protocol selection (set to false to skip) ----------
+    enable_xray:       true
+    enable_amneziawg:  true
+
+    # ---- XRAY / VLESS+Reality+XTLS-Vision + XHTTP -----------
+    xray_version:    "v26.2.4"
+    xray_platform:   "linux-64"
+    xray_path:       "/opt/xray"
+    xray_xhttp_port: 8443   # port for VLESS+XHTTP+Reality
+
+    # ---- AmneziaWG -----------------------------------------
+    awg_port: 51820   # UDP port; change if your ISP blocks 51820
+
+  roles:
+    - role: xray
+      when: enable_xray | bool
+
+    - role: amneziawg
+      when: enable_amneziawg | bool
+
+- name: Harden VPN server
+  hosts: vpn
+  become: true
+  gather_facts: false
+
+  vars:
+    # ---- Must match values above (used for firewall rules) --
+    enable_xray:      true
+    enable_amneziawg: true
+    xray_xhttp_port:  8443
+    awg_port:         51820
+
+    # ---- SSH hardening -------------------------------------
+    ssh_port:            42228          # new SSH port after hardening
+    ssh_user:            "vpnuser"      # sudo user to create
+    ssh_public_key_path: "~/.ssh/id_estonia_test.pub"  # your local pub key
+
   roles:
     - security

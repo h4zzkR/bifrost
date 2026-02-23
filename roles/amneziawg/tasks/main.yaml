@@ -1,0 +1,13 @@
+---
+- name: Install AmneziaWG
+  ansible.builtin.include_tasks: install.yaml
+
+- name: Configure AmneziaWG
+  ansible.builtin.include_tasks: configure.yaml
+
+- name: Enable and start awg-quick service
+  ansible.builtin.systemd:
+    name: awg-quick@awg0
+    enabled: true
+    state: started
+    daemon_reload: true

@@ -1,0 +1,21 @@
+[Interface]
+PrivateKey = {{ awg.server_private_key }}
+Address = 10.66.66.1/24
+ListenPort = {{ awg_port | default(51820) }}
+# Enable NAT/masquerade so VPN clients can reach the internet
+PostUp   = iptables -A FORWARD -i awg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o {{ ansible_default_ipv4.interface }} -j MASQUERADE
+PostDown = iptables -D FORWARD -i awg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o {{ ansible_default_ipv4.interface }} -j MASQUERADE
+# AmneziaWG obfuscation parameters
+Jc   = {{ awg.jc }}
+Jmin = {{ awg.jmin }}
+Jmax = {{ awg.jmax }}
+S1   = {{ awg.s1 }}
+S2   = {{ awg.s2 }}
+H1   = {{ awg.h1 }}
+H2   = {{ awg.h2 }}
+H3   = {{ awg.h3 }}
+H4   = {{ awg.h4 }}
+
+[Peer]
+PublicKey  = {{ awg.client_public_key }}
+AllowedIPs = 10.66.66.2/32

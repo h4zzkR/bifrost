@@ -1,0 +1,241 @@
+---
+# ============================================================
+#  Bifrost rollback — completely removes all VPN services and
+#  reverts server configuration to pre-deploy state.
+#
+#  IMPORTANT: After setup, SSH was moved to a custom port and
+#  password auth was disabled. Run rollback with:
+#
+#    ansible-playbook playbook-rollback.yaml \
+#        --inventory ~/.ansible/hosts \
+#        --ask-vault-pass \
+#        -e "ansible_port=42228 ansible_user=vpnuser" \
+#        -e "ansible_ssh_private_key_file=~/.ssh/id_ed25519"
+#
+#  After rollback completes, SSH will be restored to port 22
+#  with password authentication re-enabled.
+#  Your current SSH connection will DROP when sshd restarts —
+#  that is expected. Reconnect as: ssh root@YOUR_VPS_IP
+# ============================================================
+
+- name: Roll back VPN server
+  hosts: vpn
+  become: true
+  gather_facts: true
+
+  vars:
+    rollback_xray:       true
+    rollback_amneziawg:  true
+    rollback_ssh:        true    # restore SSH port 22 + password auth
+    rollback_ufw:        true    # reset UFW to defaults
+    rollback_sysctl:     true    # revert BBR / ip_forward
+
+    xray_path:           "/opt/xray"
+    ssh_user:            "vpnuser"   # user created during setup
+
+  tasks:
+
+    # ============================
+    #  XRAY
+    # ============================
+    - name: "[xray] Stop Xray service"
+      ansible.builtin.systemd:
+        name: xray
+        state: stopped
+        enabled: false
+      ignore_errors: true
+      when: rollback_xray | bool
+
+    - name: "[xray] Remove Xray systemd unit file"
+      ansible.builtin.file:
+        path: /usr/lib/systemd/system/xray.service
+        state: absent
+      when: rollback_xray | bool
+
+    - name: "[xray] Reload systemd after unit removal"
+      ansible.builtin.systemd:
+        daemon_reload: true
+      when: rollback_xray | bool
+
+    - name: "[xray] Remove Xray installation directory"
+      ansible.builtin.file:
+        path: "{{ xray_path }}"
+        state: absent
+      when: rollback_xray | bool
+
+    - name: "[xray] Remove connection links file from server home"
+      ansible.builtin.file:
+        path: ~/xray_client_connect_link.txt
+        state: absent
+      ignore_errors: true
+      when: rollback_xray | bool
+
+    # ============================
+    #  AmneziaWG
+    # ============================
+    - name: "[awg] Stop awg-quick service"
+      ansible.builtin.systemd:
+        name: awg-quick@awg0
+        state: stopped
+        enabled: false
+      ignore_errors: true
+      when: rollback_amneziawg | bool
+
+    - name: "[awg] Remove awg0 network interface"
+      ansible.builtin.command: ip link delete awg0
+      ignore_errors: true
+      changed_when: true
+      when: rollback_amneziawg | bool
+
+    - name: "[awg] Remove AmneziaWG config directory"
+      ansible.builtin.file:
+        path: /etc/amnezia
+        state: absent
+      when: rollback_amneziawg | bool
+
+    - name: "[awg] Remove AWG client config from server home"
+      ansible.builtin.file:
+        path: ~/awg_client.conf
+        state: absent
+      ignore_errors: true
+      when: rollback_amneziawg | bool
+
+    - name: "[awg] Purge amneziawg and wireguard-tools packages"
+      ansible.builtin.apt:
+        name:
+          - amneziawg
+          - wireguard-tools
+        state: absent
+        purge: true
+        autoremove: true
+      when: rollback_amneziawg | bool
+
+    - name: "[awg] Remove AmneziaWG PPA"
+      ansible.builtin.apt_repository:
+        repo: ppa:amnezia/ppa
+        state: absent
+        update_cache: true
+      when: rollback_amneziawg | bool
+
+    # ============================
+    #  Sysctl
+    # ============================
+    - name: "[sysctl] Disable IPv4 forwarding"
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: '0'
+        sysctl_set: true
+        state: present
+        reload: true
+      when: rollback_sysctl | bool
+
+    - name: "[sysctl] Revert TCP congestion control to cubic"
+      ansible.posix.sysctl:
+        name: net.ipv4.tcp_congestion_control
+        value: cubic
+        sysctl_set: true
+        state: present
+        reload: true
+      when: rollback_sysctl | bool
+
+    - name: "[sysctl] Revert default qdisc to pfifo_fast"
+      ansible.posix.sysctl:
+        name: net.core.default_qdisc
+        value: pfifo_fast
+        sysctl_set: true
+        state: present
+        reload: true
+      when: rollback_sysctl | bool
+
+    # ============================
+    #  UFW
+    # ============================
+    - name: "[ufw] Reset UFW rules to defaults"
+      ansible.builtin.command: ufw --force reset
+      when: rollback_ufw | bool
+
+    - name: "[ufw] Re-allow SSH on standard port 22"
+      ansible.builtin.command: ufw allow 22/tcp
+      when: rollback_ufw | bool
+
+    - name: "[ufw] Enable UFW with default deny-incoming policy"
+      ansible.builtin.command: ufw --force enable
+      when: rollback_ufw | bool
+
+    # ============================
+    #  SSH hardening — restore
+    # ============================
+    - name: "[ssh] Restore SSH to port 22"
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?Port"
+        line: "Port 22"
+        validate: /usr/sbin/sshd -t -f %s
+      when: rollback_ssh | bool
+
+    - name: "[ssh] Re-enable password authentication"
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PasswordAuthentication"
+        line: "PasswordAuthentication yes"
+        validate: /usr/sbin/sshd -t -f %s
+      when: rollback_ssh | bool
+
+    - name: "[ssh] Re-enable root login"
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PermitRootLogin"
+        line: "PermitRootLogin yes"
+        validate: /usr/sbin/sshd -t -f %s
+      when: rollback_ssh | bool
+
+    - name: "[ssh] Find cloud-init sshd config files"
+      ansible.builtin.find:
+        paths: /etc/ssh/sshd_config.d/
+        patterns: "*cloud-init.conf"
+        file_type: file
+      register: cloud_init_ssh_configs
+      when: rollback_ssh | bool
+
+    - name: "[ssh] Re-enable password auth in cloud-init configs"
+      ansible.builtin.lineinfile:
+        path: "{{ item.path }}"
+        regexp: "^#?PasswordAuthentication"
+        line: "PasswordAuthentication yes"
+        validate: /usr/sbin/sshd -t -f %s
+      loop: "{{ cloud_init_ssh_configs.files }}"
+      when: rollback_ssh | bool
+
+    # Schedule reboot first while SSH is still up — server will come back clean.
+    - name: "[reboot] Schedule server reboot to complete rollback"
+      ansible.builtin.command: shutdown -r now
+      async: 5
+      poll: 0
+
+    # Restart SSH asynchronously — the current connection WILL DROP.
+    # Reconnect on port 22 after this task.
+    - name: "[ssh] Restart sshd (connection will drop — expected)"
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+      async: 1
+      poll: 0
+      ignore_errors: true
+      when: rollback_ssh | bool
+
+    # ============================
+    #  Summary
+    # ============================
+    - name: "Rollback complete"
+      ansible.builtin.debug:
+        msg: |
+          ============================================================
+          Rollback finished.
+          - VPN services removed: xray={{ rollback_xray }}, amneziawg={{ rollback_amneziawg }}
+          - SSH restored to port 22 with password auth: {{ rollback_ssh }}
+          - UFW reset: {{ rollback_ufw }}
+          - Sysctl reverted: {{ rollback_sysctl }}
+
+          Server is rebooting. Reconnect with: ssh root@YOUR_VPS_IP
+          (password authentication is now re-enabled)
+          ============================================================

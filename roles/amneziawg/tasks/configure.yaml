@@ -1,0 +1,133 @@
+---
+- name: Enable IPv4 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: Create AmneziaWG config directory
+  ansible.builtin.file:
+    path: /etc/amnezia/amneziawg
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+
+- name: Check if AWG variables file exists
+  ansible.builtin.stat:
+    path: /etc/amnezia/amneziawg/awg_vars.yaml
+  register: awg_vars_stat
+
+- name: Load existing AWG variables
+  when: awg_vars_stat.stat.exists
+  block:
+    - name: Read AWG variables file
+      ansible.builtin.slurp:
+        src: /etc/amnezia/amneziawg/awg_vars.yaml
+      register: awg_vars_raw
+
+    - name: Parse AWG variables
+      ansible.builtin.set_fact:
+        awg: "{{ awg_vars_raw.content | b64decode | from_yaml }}"
+
+- name: Generate AWG variables on first run
+  when: not awg_vars_stat.stat.exists
+  block:
+    - name: Generate server private key
+      ansible.builtin.command: wg genkey
+      register: awg_server_privkey
+      changed_when: true
+
+    - name: Write server private key to temp file
+      ansible.builtin.copy:
+        content: "{{ awg_server_privkey.stdout }}"
+        dest: /tmp/awg_server_priv.key
+        mode: '0600'
+
+    - name: Derive server public key
+      ansible.builtin.shell: wg pubkey < /tmp/awg_server_priv.key
+      register: awg_server_pubkey
+      changed_when: true
+
+    - name: Generate client private key
+      ansible.builtin.command: wg genkey
+      register: awg_client_privkey
+      changed_when: true
+
+    - name: Write client private key to temp file
+      ansible.builtin.copy:
+        content: "{{ awg_client_privkey.stdout }}"
+        dest: /tmp/awg_client_priv.key
+        mode: '0600'
+
+    - name: Derive client public key
+      ansible.builtin.shell: wg pubkey < /tmp/awg_client_priv.key
+      register: awg_client_pubkey
+      changed_when: true
+
+    - name: Clean up temp key files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/awg_server_priv.key
+        - /tmp/awg_client_priv.key
+
+    - name: Set AWG variables
+      ansible.builtin.set_fact:
+        awg:
+          server_private_key: "{{ awg_server_privkey.stdout }}"
+          server_public_key: "{{ awg_server_pubkey.stdout }}"
+          client_private_key: "{{ awg_client_privkey.stdout }}"
+          client_public_key: "{{ awg_client_pubkey.stdout }}"
+          # Obfuscation: non-overlapping S1/S2 ranges ensure S1+56 != S2
+          jc: "{{ range(4, 13) | random }}"
+          jmin: 50
+          jmax: 1000
+          s1: "{{ range(15, 49) | random }}"
+          s2: "{{ range(120, 151) | random }}"
+          # H1-H4: distinct unique magic header values
+          h1: "{{ range(100000000, 999999999) | random }}"
+          h2: "{{ range(1000000000, 1499999999) | random }}"
+          h3: "{{ range(1500000000, 1999999999) | random }}"
+          h4: "{{ range(2000000000, 2147483646) | random }}"
+
+    - name: Persist AWG variables
+      ansible.builtin.template:
+        src: awg_vars.yaml.j2
+        dest: /etc/amnezia/amneziawg/awg_vars.yaml
+        mode: '0600'
+        owner: root
+        group: root
+
+- name: Deploy AmneziaWG server config
+  ansible.builtin.template:
+    src: awg0.conf.j2
+    dest: /etc/amnezia/amneziawg/awg0.conf
+    mode: '0600'
+    owner: root
+    group: root
+  notify: Restart AmneziaWG
+
+- name: Generate client config file
+  ansible.builtin.template:
+    src: client.conf.j2
+    dest: ~/awg_client.conf
+    owner: "{{ ansible_user_id | default(ansible_user) }}"
+    group: "{{ ansible_user_id | default(ansible_user) }}"
+
+- name: Read client config for display
+  ansible.builtin.command: cat ~/awg_client.conf
+  register: awg_client_conf_content
+  changed_when: false
+
+- name: Display AmneziaWG client config
+  ansible.builtin.debug:
+    var: awg_client_conf_content.stdout
+
+- name: Save client config locally
+  ansible.builtin.copy:
+    content: "{{ awg_client_conf_content.stdout }}"
+    dest: awg_client.conf

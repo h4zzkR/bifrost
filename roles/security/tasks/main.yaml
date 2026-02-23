@@ -15,7 +15,6 @@
 - name: Create SSH user with password if provided
   user:
     name: "{{ ssh_user }}"
-    name: "{{ ssh_user }}"
     groups: sudo
     shell: /bin/bash
     state: present
@@ -135,6 +134,14 @@
 
     - name: Set default policies
       command: ufw default deny incoming
+
+    - name: Allow XHTTP port (TCP)
+      ansible.builtin.command: ufw allow {{ xray_xhttp_port | default(8443) }}/tcp
+      when: enable_xray | default(true) | bool
+
+    - name: Allow AmneziaWG UDP port
+      ansible.builtin.command: ufw allow {{ awg_port }}/udp
+      when: enable_amneziawg | default(false) | bool
 
     - name: Enable UFW
       command: ufw --force enable

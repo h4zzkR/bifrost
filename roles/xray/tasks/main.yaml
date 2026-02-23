@@ -5,7 +5,7 @@
 - name: Update systemd service config
   ansible.builtin.template:
     src: xray.service.j2
-    dest: /usr/lib/systemd/system/xray.service
+    dest: /etc/systemd/system/xray.service
     owner: root
     group: root
     mode: '0644'
@@ -23,22 +23,30 @@
 - name: Configure XRay
   ansible.builtin.include_tasks: configure.yaml
 
-- name: Create XRay connection link stored to ~/xray_client_connect_link.txt
+- name: Create XRay connection links file on server
   ansible.builtin.template:
     src: xray_client_connect_link.txt.j2
     dest: ~/xray_client_connect_link.txt
     owner: "{{ ansible_user_id | default(ansible_user) }}"
     group: "{{ ansible_user_id | default(ansible_user) }}"
 
-- name: Read the XRay connection link file
+- name: Read the XRay connection links file
   ansible.builtin.command: cat ~/xray_client_connect_link.txt
   register: xray_link_content
+  changed_when: false
 
-- name: Display the link (debug)
+- name: Display connection links
   ansible.builtin.debug:
-    var: xray_link_content.stdout
+    msg: |
+      ========== Xray client connection links ==========
+      VLESS+Reality+Vision (port 443):
+        {{ xray_link_content.stdout_lines[0] }}
 
-- name: Save content to a local variable/file (optional)
+      VLESS+XHTTP+Reality (port {{ xray_xhttp_port | default(8443) }}):
+        {{ xray_link_content.stdout_lines[1] }}
+      ==================================================
+
+- name: Save connection links locally
   ansible.builtin.copy:
     content: "{{ xray_link_content.stdout }}"
     dest: xray_client_connect_link.txt
