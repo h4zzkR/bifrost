@@ -88,30 +88,34 @@
         line: "Port {{ ssh_port }}"
         validate: /usr/sbin/sshd -t -f %s
 
-    - name: Disable password auth in main sshd_config
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: "^#?PasswordAuthentication"
-        line: "PasswordAuthentication no"
-        validate: /usr/sbin/sshd -t -f %s
+    - name: Disable password authentication
+      when: ssh_disable_password_auth | default(true) | bool
+      block:
+        - name: Disable password auth in main sshd_config
+          lineinfile:
+            path: /etc/ssh/sshd_config
+            regexp: "^#?PasswordAuthentication"
+            line: "PasswordAuthentication no"
+            validate: /usr/sbin/sshd -t -f %s
 
-    - name: Disable password auth in all cloud-init SSH config files
-      find:
-        paths: /etc/ssh/sshd_config.d/
-        patterns: "*cloud-init.conf"
-        file_type: file
-      register: cloud_init_ssh_configs
+        - name: Disable password auth in all cloud-init SSH config files
+          find:
+            paths: /etc/ssh/sshd_config.d/
+            patterns: "*cloud-init.conf"
+            file_type: file
+          register: cloud_init_ssh_configs
 
-    - name: Set PasswordAuthentication no in cloud-init sshd configs
-      lineinfile:
-        path: "{{ item.path }}"
-        regexp: "^#?PasswordAuthentication"
-        line: "PasswordAuthentication no"
-        create: no
-        validate: /usr/sbin/sshd -t -f %s
-      loop: "{{ cloud_init_ssh_configs.files }}"
+        - name: Set PasswordAuthentication no in cloud-init sshd configs
+          lineinfile:
+            path: "{{ item.path }}"
+            regexp: "^#?PasswordAuthentication"
+            line: "PasswordAuthentication no"
+            create: no
+            validate: /usr/sbin/sshd -t -f %s
+          loop: "{{ cloud_init_ssh_configs.files }}"
 
     - name: Disable root login
+      when: ssh_disable_root_login | default(true) | bool
       lineinfile:
         path: /etc/ssh/sshd_config
         regexp: "^#?PermitRootLogin"

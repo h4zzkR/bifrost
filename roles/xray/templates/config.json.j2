@@ -21,11 +21,10 @@
         "security": "reality",
         "realitySettings": {
           "show": false,
-          "dest": "www.apple.com:443",
+          "dest": "files.pythonhosted.org:443",
           "xver": 0,
           "serverNames": [
-            "www.apple.com",
-            "apple.com"
+            "files.pythonhosted.org"
           ],
           "privateKey": "{{ xray.x25519_private }}",
           "minClientVer": "",
@@ -56,17 +55,16 @@
         "network": "xhttp",
         "security": "reality",
         "xhttpSettings": {
-          "mode": "stream-one",
+          "mode": "auto",
           "path": "/{{ xray.xhttp_path }}",
-          "keepAliveInterval": 30
+          "keepAliveInterval": 8
         },
         "realitySettings": {
           "show": false,
-          "dest": "www.apple.com:443",
+          "dest": "files.pythonhosted.org:443",
           "xver": 0,
           "serverNames": [
-            "www.apple.com",
-            "apple.com"
+            "files.pythonhosted.org"
           ],
           "privateKey": "{{ xray.x25519_private }}",
           "minClientVer": "",

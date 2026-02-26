@@ -55,6 +55,9 @@ cd bifrost
 ### 2. Install Ansible
 
 ```bash
+sudo apt install pipx
+pipx ensurepath
+source ~/.zshrc
 pipx install ansible-core --include-deps
 pipx inject ansible-core passlib
 ansible-galaxy collection install ansible.posix
@@ -93,7 +96,7 @@ new_root_password: "STRONG_NEW_ROOT_PASSWORD"
 ### 5. Generate an SSH key (for key-based login after hardening)
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ""
+ssh-keygen -t ed25519 -f ~/.ssh/id_vps -N ""
 ```
 
 Update `ssh_public_key_path` in [playbook-bridge-setup.yaml](playbook-bridge-setup.yaml) if your key is elsewhere.
@@ -134,7 +137,7 @@ Override any of them with `-e "var=value"` on the command line.
 | `awg_port` | `51820` | AmneziaWG UDP listen port |
 | `ssh_port` | `42228` | SSH port after hardening |
 | `ssh_user` | `vpnuser` | New sudo user created on server |
-| `ssh_public_key_path` | `~/.ssh/id_ed25519.pub` | Your public key deployed to server |
+| `ssh_public_key_path` | `~/.ssh/id_vps.pub` | Your public key deployed to server |
 
 ---
 
@@ -148,7 +151,7 @@ Clients: **Hiddify**, **Nekoray**, **v2rayNG**, **v2rayN**, **Sing-Box**
 2. In your client choose **Add from clipboard** or **Import link**
 
 ```
-vless://UUID@IP:443/?encryption=none&type=tcp&sni=www.apple.com&fp=chrome
+vless://UUID@IP:443/?encryption=none&type=tcp&sni=files.pythonhosted.org&fp=chrome
   &security=reality&flow=xtls-rprx-vision&pbk=PUBLIC_KEY&sid=SHORT_ID
   &packetEncoding=xudp#Bifrost-VLESS-Vision
 ```
@@ -161,7 +164,7 @@ Clients: **Hiddify**, **v2rayNG**, **v2rayN** (Sing-Box does not support XHTTP y
 2. Import the link as above
 
 ```
-vless://UUID@IP:8443/?encryption=none&type=xhttp&path=%2FPATH&sni=www.apple.com
+vless://UUID@IP:8443/?encryption=none&type=xhttp&path=%2FPATH&sni=files.pythonhosted.org
   &fp=chrome&security=reality&pbk=PUBLIC_KEY&sid=SHORT_ID#Bifrost-VLESS-XHTTP
 ```
 
@@ -185,8 +188,8 @@ The security role changes the SSH port and disables password auth.
 
 ```bash
 eval $(ssh-agent)
-ssh-add ~/.ssh/id_ed25519
-ssh -i ~/.ssh/id_ed25519 -p 42228 vpnuser@YOUR_VPS_IP
+ssh-add ~/.ssh/id_vps
+ssh -i ~/.ssh/id_vps -p 42228 vpnuser@YOUR_VPS_IP
 ```
 
 ---
@@ -200,7 +203,7 @@ ansible-playbook playbook-validate.yaml \
     --inventory ~/.ansible/hosts \
     --ask-vault-pass \
     -e "ansible_port=42228 ansible_user=vpnuser" \
-    -e "ansible_ssh_private_key_file=~/.ssh/id_ed25519"
+    -e "ansible_ssh_private_key_file=~/.ssh/id_vps"
 ```
 
 What it checks:
@@ -224,7 +227,7 @@ ansible-playbook playbook-rollback.yaml \
     --inventory ~/.ansible/hosts \
     --ask-vault-pass \
     -e "ansible_port=42228 ansible_user=vpnuser" \
-    -e "ansible_ssh_private_key_file=~/.ssh/id_ed25519"
+    -e "ansible_ssh_private_key_file=~/.ssh/id_vps"
 ```
 
 What it reverts:

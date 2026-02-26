@@ -16,7 +16,7 @@
     enable_amneziawg:  true
 
     # ---- XRAY / VLESS+Reality+XTLS-Vision + XHTTP -----------
-    xray_version:    "v26.2.4"
+    xray_version:    "v26.2.6"
     xray_platform:   "linux-64"
     xray_path:       "/opt/xray"
     xray_xhttp_port: 8443   # port for VLESS+XHTTP+Reality
@@ -46,7 +46,9 @@
     # ---- SSH hardening -------------------------------------
     ssh_port:            42228          # new SSH port after hardening
     ssh_user:            "vpnuser"      # sudo user to create
-    ssh_public_key_path: "~/.ssh/id_estonia_test.pub"  # your local pub key
+    ssh_public_key_path: "~/.ssh/id_vps.pub"  # your local pub key
+    ssh_disable_password_auth: false    # set false to keep password login (debug)
+    ssh_disable_root_login:    true     # set false to keep root login (debug)
 
   roles:
     - security

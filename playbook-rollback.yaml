@@ -10,7 +10,7 @@
 #        --inventory ~/.ansible/hosts \
 #        --ask-vault-pass \
 #        -e "ansible_port=42228 ansible_user=vpnuser" \
-#        -e "ansible_ssh_private_key_file=~/.ssh/id_ed25519"
+#        -e "ansible_ssh_private_key_file=~/.ssh/id_vps"
 #
 #  After rollback completes, SSH will be restored to port 22
 #  with password authentication re-enabled.
@@ -79,12 +79,6 @@
         state: stopped
         enabled: false
       ignore_errors: true
-      when: rollback_amneziawg | bool
-
-    - name: "[awg] Remove awg0 network interface"
-      ansible.builtin.command: ip link delete awg0
-      ignore_errors: true
-      changed_when: true
       when: rollback_amneziawg | bool
 
     - name: "[awg] Remove AmneziaWG config directory"
@@ -206,23 +200,6 @@
       loop: "{{ cloud_init_ssh_configs.files }}"
       when: rollback_ssh | bool
 
-    # Schedule reboot first while SSH is still up — server will come back clean.
-    - name: "[reboot] Schedule server reboot to complete rollback"
-      ansible.builtin.command: shutdown -r now
-      async: 5
-      poll: 0
-
-    # Restart SSH asynchronously — the current connection WILL DROP.
-    # Reconnect on port 22 after this task.
-    - name: "[ssh] Restart sshd (connection will drop — expected)"
-      ansible.builtin.service:
-        name: ssh
-        state: restarted
-      async: 1
-      poll: 0
-      ignore_errors: true
-      when: rollback_ssh | bool
-
     # ============================
     #  Summary
     # ============================
@@ -239,3 +216,21 @@
           Server is rebooting. Reconnect with: ssh root@YOUR_VPS_IP
           (password authentication is now re-enabled)
           ============================================================
+
+    # Restart SSH asynchronously — the current connection WILL DROP.
+    # Must be after the summary since Ansible can't reconnect on the old port.
+    - name: "[ssh] Restart sshd (connection will drop — expected)"
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+      async: 1
+      poll: 0
+      ignore_errors: true
+      when: rollback_ssh | bool
+
+    # Schedule reboot last — server will come back clean on port 22.
+    - name: "[reboot] Schedule server reboot to complete rollback"
+      ansible.builtin.command: shutdown -r now
+      async: 5
+      poll: 0
+      ignore_errors: true
