@@ -130,4 +130,6 @@
 - name: Save client config locally
   ansible.builtin.copy:
     content: "{{ awg_client_conf_content.stdout }}"
-    dest: awg_client.conf
+    dest: "{{ playbook_dir }}/awg_client.conf"
+  delegate_to: localhost
+  become: false

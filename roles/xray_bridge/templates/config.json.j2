@@ -1,0 +1,66 @@
+{
+  "log": { "loglevel": "warning" },
+  "inbounds": [
+    {
+      "port": 443,
+      "protocol": "vless",
+      "tag": "vless-in",
+      "settings": {
+        "clients": [{ "id": "{{ bridge.uuid }}", "flow": "xtls-rprx-vision" }],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "{{ xray_sni_dest }}:443",
+          "xver": 0,
+          "serverNames": ["{{ xray_sni_dest }}"],
+          "privateKey": "{{ bridge.x25519_private }}",
+          "maxTimeDiff": 60000,
+          "shortIds": ["{{ bridge.short_id }}"]
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": true
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "vless",
+      "tag": "exit",
+      "settings": {
+        "vnext": [{
+          "address": "{{ exit_ip }}",
+          "port": {{ xray_xhttp_port | default(8443) }},
+          "users": [{ "id": "{{ exit_xray.uuid }}", "encryption": "none" }]
+        }]
+      },
+      "streamSettings": {
+        "network": "xhttp",
+        "security": "reality",
+        "xhttpSettings": {
+          "mode": "packet-up",
+          "path": "/{{ exit_xray.xhttp_path }}",
+          "extra": {
+            "xPaddingBytes": "100-1000",
+            "scMaxEachPostBytes": 1000000,
+            "scMinPostsIntervalMs": "10-50"
+          }
+        },
+        "realitySettings": {
+          "show": false,
+          "serverName": "{{ xray_sni_dest }}",
+          "fingerprint": "chrome",
+          "publicKey": "{{ exit_xray.x25519_public }}",
+          "shortId": "{{ exit_xray.short_id }}"
+        }
+      }
+    },
+    { "protocol": "blackhole", "tag": "block" }
+  ]
+}

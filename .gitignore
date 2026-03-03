@@ -59,3 +59,7 @@ flycheck_*.el
 ### Project-specific
 TODO.md
 TODO.org
+
+awg_client.conf
+hysteria2_client_connect_link.txt
+xray_client_connect_link.txt

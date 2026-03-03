@@ -49,4 +49,6 @@
 - name: Save connection links locally
   ansible.builtin.copy:
     content: "{{ xray_link_content.stdout }}"
-    dest: xray_client_connect_link.txt
+    dest: "{{ playbook_dir }}/xray_client_connect_link.txt"
+  delegate_to: localhost
+  become: false

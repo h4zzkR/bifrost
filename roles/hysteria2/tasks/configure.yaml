@@ -1,0 +1,50 @@
+---
+- name: Check if Hysteria2 variables file exists
+  ansible.builtin.stat:
+    path: "{{ (hysteria2_path, 'vars.yaml') | path_join }}"
+  register: hy2_vars_stat
+
+- name: Load existing Hysteria2 variables
+  when: hy2_vars_stat.stat.exists
+  block:
+    - name: Read Hysteria2 variables
+      ansible.builtin.slurp:
+        src: "{{ (hysteria2_path, 'vars.yaml') | path_join }}"
+      register: hy2_vars_raw
+
+    - name: Set Hysteria2 variables from file
+      ansible.builtin.set_fact:
+        hy2: "{{ hy2_vars_raw['content'] | b64decode | from_yaml }}"
+
+- name: Generate new Hysteria2 variables
+  when: not hy2_vars_stat.stat.exists
+  block:
+    - name: Generate auth password
+      ansible.builtin.command: openssl rand -hex 16
+      register: auth_password_result
+      changed_when: true
+
+    - name: Generate obfs password
+      ansible.builtin.command: openssl rand -hex 16
+      register: obfs_password_result
+      changed_when: true
+
+    - name: Set Hysteria2 variables
+      ansible.builtin.set_fact:
+        hy2:
+          auth_password: "{{ auth_password_result.stdout }}"
+          obfs_password: "{{ obfs_password_result.stdout }}"
+
+    - name: Write Hysteria2 variables file
+      ansible.builtin.template:
+        src: variables.yaml.j2
+        dest: "{{ (hysteria2_path, 'vars.yaml') | path_join }}"
+        mode: '0600'
+
+- name: Write Hysteria2 server config
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: "{{ (hysteria2_path, 'config.yaml') | path_join }}"
+    mode: '0644'
+  changed_when: (hy2_version_current.content is not defined) or (hy2_version_current.content | b64decode | default('') | trim != hysteria2_version)
+  notify: Restart Hysteria2

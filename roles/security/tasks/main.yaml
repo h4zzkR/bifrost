@@ -147,6 +147,10 @@
       ansible.builtin.command: ufw allow {{ awg_port }}/udp
       when: enable_amneziawg | default(false) | bool
 
+    - name: Allow Hysteria2 UDP port
+      ansible.builtin.command: ufw allow {{ hysteria2_port | default(443) }}/udp
+      when: enable_hysteria2 | default(false) | bool
+
     - name: Enable UFW
       command: ufw --force enable
   notify: Restart UFW

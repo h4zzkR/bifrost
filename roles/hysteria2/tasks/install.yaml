@@ -1,0 +1,36 @@
+---
+- name: Check currently installed Hysteria2 version
+  ansible.builtin.slurp:
+    src: "{{ (hysteria2_path, 'version') | path_join }}"
+  register: hy2_version_current
+  failed_when: false
+
+- name: Get release, install, clean up
+  when: (hy2_version_current.content is not defined) or (hy2_version_current.content | b64decode | default('') | trim != hysteria2_version)
+  block:
+    - name: Create Hysteria2 directory
+      ansible.builtin.file:
+        path: "{{ hysteria2_path }}"
+        state: directory
+        mode: '0755'
+
+    - name: Download Hysteria2 binary
+      ansible.builtin.get_url:
+        url: "https://github.com/apernet/hysteria/releases/download/app/{{ hysteria2_version }}/hysteria-{{ hysteria2_platform }}"
+        dest: "{{ (hysteria2_path, 'hysteria') | path_join }}"
+        mode: '0755'
+
+    - name: Store Hysteria2 version
+      ansible.builtin.copy:
+        content: "{{ hysteria2_version }}"
+        dest: "{{ (hysteria2_path, 'version') | path_join }}"
+        mode: '0644'
+
+- name: Generate self-signed TLS certificate
+  ansible.builtin.command:
+    cmd: >
+      openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256
+      -keyout {{ (hysteria2_path, 'server.key') | path_join }}
+      -out {{ (hysteria2_path, 'server.crt') | path_join }}
+      -days 3650 -nodes -subj "/CN={{ xray_sni_dest }}"
+    creates: "{{ (hysteria2_path, 'server.crt') | path_join }}"

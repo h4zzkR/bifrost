@@ -1,0 +1,1 @@
+hysteria2://{{ hy2.auth_password }}@{{ ansible_host }}:{{ hysteria2_port | default(443) }}?obfs=salamander&obfs-password={{ hy2.obfs_password }}&sni={{ xray_sni_dest }}&insecure=1#Bifrost-Hysteria2

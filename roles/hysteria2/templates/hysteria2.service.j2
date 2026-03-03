@@ -1,0 +1,13 @@
+[Unit]
+Description=Hysteria2 Server
+After=network.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=10
+WorkingDirectory={{ hysteria2_path }}
+ExecStart={{ (hysteria2_path, 'hysteria') | path_join }} server -c {{ (hysteria2_path, 'config.yaml') | path_join }}
+
+[Install]
+WantedBy=multi-user.target

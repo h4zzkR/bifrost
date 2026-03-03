@@ -1,0 +1,5 @@
+---
+- name: Restart Hysteria2
+  ansible.builtin.systemd:
+    name: hysteria2
+    state: restarted

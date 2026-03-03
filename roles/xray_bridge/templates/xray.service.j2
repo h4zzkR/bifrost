@@ -1,0 +1,13 @@
+[Unit]
+Description=XRay Service (Bridge)
+Documentation=https://github.com/xtls
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=30
+WorkingDirectory={{ xray_path }}
+ExecStart={{ (xray_path, 'xray') | path_join }} run -c {{ (xray_path, 'config.json') | path_join }}
+
+[Install]
+WantedBy=multi-user.target

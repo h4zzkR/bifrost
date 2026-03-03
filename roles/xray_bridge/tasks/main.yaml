@@ -1,0 +1,53 @@
+---
+- name: Install Xray (bridge reuses exit binary)
+  ansible.builtin.include_role:
+    name: xray
+    tasks_from: install
+
+- name: Update systemd service config
+  ansible.builtin.template:
+    src: xray.service.j2
+    dest: /etc/systemd/system/xray.service
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Reload systemd to recognize the Xray service
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Enable and start Xray service
+  ansible.builtin.systemd:
+    name: xray
+    enabled: true
+    state: started
+
+- name: Configure Xray bridge
+  ansible.builtin.include_tasks: configure.yaml
+
+- name: Create bridge connection link file on server
+  ansible.builtin.template:
+    src: client_connect_link.txt.j2
+    dest: ~/bridge_client_connect_link.txt
+    owner: "{{ ansible_user_id | default(ansible_user) }}"
+    group: "{{ ansible_user_id | default(ansible_user) }}"
+
+- name: Read bridge connection link
+  ansible.builtin.command: cat ~/bridge_client_connect_link.txt
+  register: bridge_link_content
+  changed_when: false
+
+- name: Display bridge connection link
+  ansible.builtin.debug:
+    msg: |
+      ========== Bridge client connection link ==========
+      VLESS+Reality+Vision via Bridge (port 443):
+        {{ bridge_link_content.stdout }}
+      ===================================================
+
+- name: Save bridge connection link locally
+  ansible.builtin.copy:
+    content: "{{ bridge_link_content.stdout }}"
+    dest: "{{ playbook_dir }}/bridge_client_connect_link.txt"
+  delegate_to: localhost
+  become: false

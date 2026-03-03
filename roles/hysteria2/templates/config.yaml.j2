@@ -1,0 +1,24 @@
+listen: :{{ hysteria2_port | default(443) }}
+
+tls:
+  cert: {{ (hysteria2_path, 'server.crt') | path_join }}
+  key: {{ (hysteria2_path, 'server.key') | path_join }}
+
+obfs:
+  type: salamander
+  salamander:
+    password: {{ hy2.obfs_password }}
+
+auth:
+  type: password
+  password: {{ hy2.auth_password }}
+
+masquerade:
+  type: proxy
+  proxy:
+    url: https://{{ xray_sni_dest }}
+    rewriteHost: true
+
+bandwidth:
+  up: 1 gbps
+  down: 1 gbps

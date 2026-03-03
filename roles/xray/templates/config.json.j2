@@ -21,10 +21,10 @@
         "security": "reality",
         "realitySettings": {
           "show": false,
-          "dest": "files.pythonhosted.org:443",
+          "dest": "{{ xray_sni_dest }}:443",
           "xver": 0,
           "serverNames": [
-            "files.pythonhosted.org"
+            "{{ xray_sni_dest }}"
           ],
           "privateKey": "{{ xray.x25519_private }}",
           "minClientVer": "",
@@ -55,16 +55,16 @@
         "network": "xhttp",
         "security": "reality",
         "xhttpSettings": {
-          "mode": "auto",
+          "mode": "stream-one",
           "path": "/{{ xray.xhttp_path }}",
-          "keepAliveInterval": 8
+          "keepAliveInterval": 30
         },
         "realitySettings": {
           "show": false,
-          "dest": "files.pythonhosted.org:443",
+          "dest": "{{ xray_sni_dest }}:443",
           "xver": 0,
           "serverNames": [
-            "files.pythonhosted.org"
+            "{{ xray_sni_dest }}"
           ],
           "privateKey": "{{ xray.x25519_private }}",
           "minClientVer": "",
