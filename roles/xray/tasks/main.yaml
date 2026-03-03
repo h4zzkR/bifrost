@@ -39,11 +39,8 @@
   ansible.builtin.debug:
     msg: |
       ========== Xray client connection links ==========
-      VLESS+Reality+Vision (port 443):
-        {{ xray_link_content.stdout_lines[0] }}
-
       VLESS+XHTTP+Reality (port {{ xray_xhttp_port | default(8443) }}):
-        {{ xray_link_content.stdout_lines[1] }}
+        {{ xray_link_content.stdout_lines[0] }}
       ==================================================
 
 - name: Save connection links locally

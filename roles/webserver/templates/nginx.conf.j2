@@ -1,0 +1,37 @@
+# Public HTTP — Let's Encrypt renewal + redirect to HTTPS
+server {
+    listen 80;
+    server_name {{ webserver_domain }};
+    root /var/www/{{ webserver_domain }};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/{{ webserver_domain }};
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS — public 443 (TSPU sees real site) + internal 4443 (Xray Reality cert steal)
+# Xray XHTTP inbound on port 8443 steals the cert via 127.0.0.1:{{ webserver_nginx_port }}.
+# UDP 443 (Hysteria2) is unaffected — different protocol, no conflict.
+server {
+    listen 443 ssl;
+    listen 127.0.0.1:{{ webserver_nginx_port }} ssl;
+    server_name {{ webserver_domain }};
+
+    ssl_certificate     /etc/letsencrypt/live/{{ webserver_domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ webserver_domain }}/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+
+    add_header Strict-Transport-Security "max-age=63072000" always;
+
+    root  /var/www/{{ webserver_domain }};
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}

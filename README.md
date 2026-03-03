@@ -11,28 +11,35 @@ One command deploys all protocols; ready-to-import client configs appear locally
 
 | Protocol | Transport | Port | Notes |
 |---|---|---|---|
-| **VLESS + Reality + XTLS-Vision** | TCP | 443 | Primary. Steals TLS cert from a target site. Best all-round bypass. |
-| **VLESS + Reality + XHTTP** | TCP | 8443 | HTTP/2 over Reality. Effective when persistent TCP is throttled. |
+| **VLESS + Reality + XHTTP** | TCP | 8443 | Primary. HTTP stream over Reality. Effective against TSPU TCP throttling. |
 | **AmneziaWG** | UDP | 51820 | WireGuard with junk-packet obfuscation. Defeats TSPU fixed-size packet detection. |
 | **Hysteria2** | UDP | 443 | QUIC-based proxy with Salamander obfuscation. Immune to TCP throttling. |
 
 ### Why these protocols?
 
 * **OpenVPN / plain WireGuard** — blocked within seconds by Russian TSPU.
-* **VLESS+Reality** — server borrows a real TLS certificate from `files.pythonhosted.org`. A censor probing the port sees a genuine TLS handshake.
-* **XHTTP** — same Reality disguise but splits traffic into multiplexed HTTP/2 chunks. Use when ISPs throttle long-lived TCP streams (≥ 15 KB threshold seen in Russia). Not supported by Sing-box.
+* **VLESS+Reality+XHTTP** — splits traffic into multiplexed HTTP chunks over a Reality TLS session. The server uses a real TLS certificate from your own domain (self-steal), so TSPU probing port 8443 sees a legitimate handshake. Not supported by Sing-box.
 * **AmneziaWG** — prepends random junk before every WireGuard handshake, randomises packet sizes with `S1`/`S2`, and uses custom 32-bit magic headers `H1`–`H4`.
 * **Hysteria2** — runs over QUIC (UDP). Russian TSPU TCP-freeze never applies. Salamander obfuscation makes packets look like random UDP noise, defeating QUIC fingerprinting.
 
-### Chain proxy (advanced)
+### Self-steal (domain camouflage)
 
-For the most hostile ISPs, deploy a **bridge VPS** inside Russia (whitelisted datacenter IP) that relays to a foreign **exit VPS**. The client-to-bridge leg is domestic so the TCP freeze never fires. Use `playbook-chain-setup.yaml`.
+The server runs nginx on your own domain with a real Let's Encrypt certificate. Nginx serves port 443/TCP publicly — TSPU probing that port sees an ordinary HTTPS website. Xray Reality steals the certificate from this local nginx for the XHTTP inbound on 8443.
+
+```
+443/TCP  → nginx → real website  (TSPU sees this)
+443/UDP  → Hysteria2             (different protocol, no conflict)
+4443/TCP → nginx (127.0.0.1)    → Xray steals cert from here
+8443/TCP → Xray VLESS+XHTTP+Reality
+51820/UDP → AmneziaWG
+```
 
 ---
 
 ## Requirements
 
 * A VPS running **Ubuntu 22.04 LTS** with SSH root access
+* A domain with an **A record pointing to the VPS** (for Let's Encrypt)
 * Locally: **Python 3** + **pipx**
 
 ---
@@ -77,7 +84,12 @@ ansible-vault create secrets.yml
 
 ```yaml
 ssh_user_password: "STRONG_PASSWORD_FOR_NEW_USER"
-new_root_password: "STRONG_NEW_ROOT_PASSWORD"
+new_root_password:  "STRONG_NEW_ROOT_PASSWORD"
+
+# Self-steal domain camouflage (DNS A record must point to the VPS)
+webserver_domain: "yourdomain.com"
+certbot_email:    "you@example.com"
+xray_sni_dest:    "yourdomain.com"   # must match webserver_domain
 ```
 
 ### 5. Generate an SSH key
@@ -104,7 +116,7 @@ Output files saved locally when done:
 
 | File | Contents |
 |---|---|
-| `xray_client_connect_link.txt` | VLESS URIs (Vision + XHTTP) |
+| `xray_client_connect_link.txt` | VLESS+XHTTP URI |
 | `awg_client.conf` | AmneziaWG config |
 | `hysteria2_client_connect_link.txt` | Hysteria2 URI |
 
@@ -112,30 +124,37 @@ Output files saved locally when done:
 
 ## Variables
 
-| Variable | Default | Description |
+All vars live in [playbook-bridge-setup.yaml](playbook-bridge-setup.yaml). Secrets go in `secrets.yml`.
+
+| Variable | Where | Description |
 |---|---|---|
-| `enable_xray` | `true` | Deploy VLESS+Reality (Vision + XHTTP) |
-| `enable_amneziawg` | `true` | Deploy AmneziaWG |
-| `enable_hysteria2` | `true` | Deploy Hysteria2 |
-| `xray_version` | `v26.2.6` | Xray-core release tag |
-| `xray_xhttp_port` | `8443` | VLESS+XHTTP port |
-| `xray_sni_dest` | `files.pythonhosted.org` | Reality SNI/dest (must match client links) |
-| `awg_port` | `51820` | AmneziaWG UDP port |
-| `hysteria2_version` | `v2.6.1` | Hysteria2 release tag |
-| `hysteria2_port` | `443` | Hysteria2 UDP port |
-| `ssh_port` | `42228` | SSH port after hardening |
-| `ssh_user` | `vpnuser` | New sudo user created on server |
-| `ssh_public_key_path` | `~/.ssh/id_vps.pub` | Public key deployed to server |
+| `webserver_domain` | secrets.yml | Domain for nginx + Let's Encrypt (= `xray_sni_dest`) |
+| `certbot_email` | secrets.yml | Email for Let's Encrypt registration |
+| `xray_sni_dest` | secrets.yml | Reality SNI / client link SNI (= `webserver_domain`) |
+| `ssh_user_password` | secrets.yml | Password for new sudo user |
+| `new_root_password` | secrets.yml | New root password |
+| `enable_xray` | playbook | Deploy VLESS+XHTTP+Reality |
+| `enable_amneziawg` | playbook | Deploy AmneziaWG |
+| `enable_hysteria2` | playbook | Deploy Hysteria2 |
+| `enable_webserver` | playbook | Deploy nginx + Let's Encrypt (self-steal) |
+| `xray_version` | playbook | Xray-core release tag |
+| `xray_xhttp_port` | playbook | VLESS+XHTTP port (default `8443`) |
+| `xray_reality_dest` | playbook | Xray Reality dest (default `127.0.0.1:4443`) |
+| `webserver_nginx_port` | playbook | Internal nginx HTTPS port (default `4443`) |
+| `awg_port` | playbook | AmneziaWG UDP port (default `51820`) |
+| `hysteria2_port` | playbook | Hysteria2 UDP port (default `443`) |
+| `ssh_port` | playbook | SSH port after hardening (default `42228`) |
+| `ssh_user` | playbook | New sudo user (default `vpnuser`) |
 
 ---
 
 ## Connecting clients
 
-### VLESS+Reality+Vision / XHTTP
+### VLESS+XHTTP+Reality
 
-Clients: **Hiddify**, **v2rayNG**, **v2rayN**, **Nekoray** (XHTTP not supported in Sing-box)
+Clients: **Hiddify**, **v2rayNG**, **v2rayN**, **Nekoray** (not supported in Sing-box)
 
-Import the corresponding line from `xray_client_connect_link.txt` via **Add from clipboard**.
+Import the URI from `xray_client_connect_link.txt` via **Add from clipboard**.
 
 ### AmneziaWG
 
@@ -150,10 +169,6 @@ Open AmneziaVPN → **Add VPN** → **Import config from file** → select `awg_
 Clients: **Hiddify**, **Nekoray**, **v2rayN**, **Sing-box**
 
 Import the URI from `hysteria2_client_connect_link.txt` via **Add from clipboard**.
-
-```
-hysteria2://AUTH@IP:443?obfs=salamander&obfs-password=PASS&sni=files.pythonhosted.org&insecure=1
-```
 
 ---
 
@@ -195,14 +210,15 @@ The playbook is **idempotent**. Credentials are persisted on the server and reus
 - Xray: `/opt/xray/config_vars.yaml`
 - AmneziaWG: `/etc/amnezia/amneziawg/awg_vars.yaml`
 - Hysteria2: `/opt/hysteria2/hy2_vars.yaml`
+- TLS cert: `/etc/letsencrypt/live/<domain>/` (renewed automatically via weekly cron)
 
-To rotate credentials, delete the respective vars file and re-run.
+To rotate VPN credentials, delete the respective vars file and re-run.
 
 ---
 
 ## Credits
 
 Original playbook — [dmgening](https://github.com/dmgening), productionised by [pilosus](https://github.com/pilosus).
-Hardening, AmneziaWG, XHTTP, Hysteria2 — [h4zzkR](https://github.com/h4zzkR).
+Hardening, AmneziaWG, XHTTP, Hysteria2, self-steal — [h4zzkR](https://github.com/h4zzkR).
 
 MIT License

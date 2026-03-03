@@ -4,53 +4,6 @@
   },
   "inbounds": [
     {
-      "port": 443,
-      "protocol": "vless",
-      "tag": "vless-vision",
-      "settings": {
-        "clients": [
-          {
-            "id": "{{ xray.uuid }}",
-            "flow": "xtls-rprx-vision",
-            "testseed": [900, 500, 900, 256]
-          }
-        ],
-        "decryption": "none"
-      },
-      "streamSettings": {
-        "network": "tcp",
-        "security": "reality",
-        "realitySettings": {
-          "show": false,
-          "dest": "{{ xray_sni_dest }}:443",
-          "xver": 0,
-          "serverNames": [
-            "{{ xray_sni_dest }}"
-          ],
-          "privateKey": "{{ xray.x25519_private }}",
-          "minClientVer": "",
-          "maxClientVer": "",
-          "maxTimeDiff": 60000,
-          "shortIds": ["{{ xray.short_id }}"],
-          "limitFallbackUpload": {
-            "afterBytes": 14000,
-            "bytesPerSec": 102400,
-            "burstBytesPerSec": 10485760
-          },
-          "limitFallbackDownload": {
-            "afterBytes": 14000,
-            "bytesPerSec": 2097152,
-            "burstBytesPerSec": 52428800
-          }
-        }
-      },
-      "sniffing": {
-        "enabled": true,
-        "destOverride": ["http", "tls", "quic"],
-        "routeOnly": true
-      }
-    },
-    {
       "port": {{ xray_xhttp_port | default(8443) }},
       "protocol": "vless",
       "tag": "vless-xhttp",
@@ -72,7 +25,7 @@
         },
         "realitySettings": {
           "show": false,
-          "dest": "{{ xray_sni_dest }}:443",
+          "dest": "{{ xray_reality_dest | default(xray_sni_dest + ':443') }}",
           "xver": 0,
           "serverNames": [
             "{{ xray_sni_dest }}"

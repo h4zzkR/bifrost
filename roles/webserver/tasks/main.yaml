@@ -1,0 +1,80 @@
+---
+- name: Install nginx and certbot
+  ansible.builtin.apt:
+    name:
+      - nginx
+      - certbot
+    state: present
+    update_cache: true
+
+- name: Create webroot directory
+  ansible.builtin.file:
+    path: /var/www/{{ webserver_domain }}
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+
+- name: Deploy placeholder website
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: /var/www/{{ webserver_domain }}/index.html
+    owner: www-data
+    group: www-data
+    mode: '0644'
+
+- name: Remove default nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+# Phase 1: HTTP-only so certbot can complete the webroot challenge
+- name: Deploy nginx HTTP-only config
+  ansible.builtin.template:
+    src: nginx_http.conf.j2
+    dest: /etc/nginx/sites-available/{{ webserver_domain }}
+    mode: '0644'
+
+- name: Enable site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/{{ webserver_domain }}
+    dest: /etc/nginx/sites-enabled/{{ webserver_domain }}
+    state: link
+
+- name: Start and enable nginx
+  ansible.builtin.systemd:
+    name: nginx
+    state: restarted
+    enabled: true
+
+- name: Allow port 80 in UFW for Let's Encrypt HTTP-01 challenge
+  ansible.builtin.command: ufw allow 80/tcp
+  changed_when: false
+  failed_when: false   # safe if UFW is not yet active
+
+- name: Obtain Let's Encrypt certificate
+  ansible.builtin.command: >
+    certbot certonly --webroot
+      -w /var/www/{{ webserver_domain }}
+      -d {{ webserver_domain }}
+      -m {{ certbot_email }}
+      --agree-tos --non-interactive
+  args:
+    creates: /etc/letsencrypt/live/{{ webserver_domain }}/fullchain.pem
+
+# Phase 2: Full config — HTTP redirect + HTTPS on 127.0.0.1 only (cert now exists)
+- name: Deploy full nginx config (HTTP + local HTTPS on 127.0.0.1:{{ webserver_nginx_port }})
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/sites-available/{{ webserver_domain }}
+    mode: '0644'
+  notify: Reload nginx
+
+- name: Enable certbot auto-renewal (weekly cron)
+  ansible.builtin.cron:
+    name: certbot-renewal
+    weekday: "1"
+    hour: "3"
+    minute: "30"
+    job: "certbot renew --quiet && systemctl reload nginx"
+    user: root

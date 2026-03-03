@@ -1,4 +1,1 @@
-vless://43b098f6-0b8c-467f-b20c-1887473b8f9b@38.180.230.181:443/?encryption=none&type=tcp&sni=www.apple.com&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk=o7kv_QN6z7YvGnXX0ayIDEuYUj06WFmTzvC96msI6G0&sid=56b8e98a5c84ed18&packetEncoding=xudp#Bifrost-VLESS-Vision
-
-
-vless://43b098f6-0b8c-467f-b20c-1887473b8f9b@38.180.230.181:8443/?encryption=none&type=xhttp&path=%2F783f3594053d5d89&sni=www.apple.com&fp=chrome&security=reality&pbk=o7kv_QN6z7YvGnXX0ayIDEuYUj06WFmTzvC96msI6G0&sid=56b8e98a5c84ed18#Bifrost-VLESS-XHTTProot@v129528851:/home/vpnuser#
+vless://{{ xray.uuid }}@{{ ansible_host }}:{{ xray_xhttp_port | default(8443) }}/?encryption=none&type=xhttp&path=%2F{{ xray.xhttp_path }}&sni={{ xray_sni_dest }}&fp=chrome&security=reality&pbk={{ xray.x25519_public }}&sid={{ xray.short_id }}#Bifrost-VLESS-XHTTP
