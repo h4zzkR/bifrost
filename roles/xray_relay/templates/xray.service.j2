@@ -1,0 +1,14 @@
+[Unit]
+Description=XRay Service (relay)
+Documentation=https://github.com/xtls
+After=network.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=30
+WorkingDirectory={{ xray_path }}
+ExecStart={{ (xray_path, 'xray') | path_join }} run -c {{ (xray_path, 'config.json') | path_join }}
+
+[Install]
+WantedBy=multi-user.target

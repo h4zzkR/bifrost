@@ -35,6 +35,13 @@
     state: present
     key: "{{ lookup('file', ssh_public_key_path) }}"
 
+- name: Allow ssh_user to sudo without password
+  ansible.builtin.copy:
+    content: "{{ ssh_user }} ALL=(ALL) NOPASSWD: ALL\n"
+    dest: "/etc/sudoers.d/{{ ssh_user }}"
+    mode: '0440'
+    validate: 'visudo -cf %s'
+
 # --- Root Password Configuration ---
 - name: Change root password if specified
   user:

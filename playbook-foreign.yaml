@@ -1,0 +1,67 @@
+---
+# ============================================================
+#  Bifrost — Step 1: Foreign VPS
+#
+#  Deploys: nginx (masquerade site + Let's Encrypt),
+#           Xray VLESS+XHTTP+REALITY (TCP 8443, self-steal),
+#           Hysteria2 (UDP 443),
+#           AmneziaWG (UDP 51820),
+#           SSH hardening + UFW.
+#
+#  Run first, before playbook-relay.yaml.
+#
+#  Usage:
+#    ansible-playbook -i secrets.yaml playbook-foreign.yaml --ask-vault-pass
+# ============================================================
+
+- name: Deploy VPN services on foreign VPS
+  hosts: foreign
+  become: true
+  gather_facts: true
+
+  vars:
+    # ── Domain (from secrets.yaml all.vars: foreign_domain, certbot_email) ──
+    webserver_domain:     "{{ foreign_domain }}"
+    xray_sni_dest:        "{{ foreign_domain }}"
+    # Xray steals the TLS cert from local nginx via 127.0.0.1:4443
+    xray_reality_dest:    "127.0.0.1:4443"
+    webserver_nginx_port: 4443
+
+    # ── Xray ────────────────────────────────────────────────────────────────
+    xray_version:    "v26.2.6"
+    xray_platform:   "linux-64"
+    xray_path:       "/opt/xray"
+    xray_xhttp_port: 8443
+
+    # ── Hysteria2 ────────────────────────────────────────────────────────────
+    hysteria2_version:  "v2.6.1"
+    hysteria2_platform: "linux-amd64"
+    hysteria2_path:     "/opt/hysteria2"
+    hysteria2_port:     443
+
+    # ── AmneziaWG ────────────────────────────────────────────────────────────
+    awg_port: 51820
+
+  roles:
+    # webserver runs first: nginx + Let's Encrypt cert are required by Xray self-steal
+    - webserver
+    - xray
+    - hysteria2
+    - amneziawg
+
+- name: Harden foreign VPS
+  hosts: foreign
+  become: true
+  gather_facts: false
+
+  vars:
+    enable_xray:      true
+    enable_amneziawg: true
+    enable_hysteria2: true
+    xray_xhttp_port:  8443
+    awg_port:         51820
+    hysteria2_port:   443
+    # ssh_port, ssh_user, ssh_public_key_path etc. come from secrets.yaml all.vars
+
+  roles:
+    - security

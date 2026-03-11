@@ -1,0 +1,3 @@
+vless://{{ relay_xray.uuid }}@{{ ansible_host }}:443?security=reality&sni={{ relay_domain }}&pbk={{ relay_xray.x25519_public }}&sid={{ relay_xray.short_id }}&fp=chrome&flow=xtls-rprx-vision&type=tcp#Bifrost-Relay-XHTTP
+vless://{{ relay_xray.uuid_hy2 }}@{{ ansible_host }}:443?security=reality&sni={{ relay_domain }}&pbk={{ relay_xray.x25519_public }}&sid={{ relay_xray.short_id }}&fp=chrome&flow=xtls-rprx-vision&type=tcp#Bifrost-Relay-Hysteria2
+vless://{{ relay_xray.uuid_awg }}@{{ ansible_host }}:443?security=reality&sni={{ relay_domain }}&pbk={{ relay_xray.x25519_public }}&sid={{ relay_xray.short_id }}&fp=chrome&flow=xtls-rprx-vision&type=tcp#Bifrost-Relay-AWG

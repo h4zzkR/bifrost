@@ -27,6 +27,7 @@
         mode: '0644'
 
 - name: Generate self-signed TLS certificate
+  when: xray_sni_dest is defined
   ansible.builtin.command:
     cmd: >
       openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256

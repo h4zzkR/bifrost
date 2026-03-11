@@ -1,21 +1,13 @@
 # ============================================================
-#  Bifrost inventory example
-#  Copy to ~/.ansible/hosts (or any path) and fill in your VPS details.
-#  Then encrypt with:  ansible-vault encrypt ~/.ansible/hosts
+#  Bifrost — inventory is now secrets.yaml
 #
-#  IMPORTANT: Ansible INI format does NOT support \ line continuation.
-#  All host variables must be on a single line.
-# ============================================================
-
-[vpn]
-my-vps ansible_host=YOUR.VPS.IP.ADDRESS ansible_user=root ansible_ssh_pass=YOUR_ROOT_PASSWORD ansible_become_pass=YOUR_ROOT_PASSWORD ansible_connection=ssh
-
-# ---- Notes -------------------------------------------------
-# 1. Replace YOUR.VPS.IP.ADDRESS with the real IPv4 address.
-# 2. Replace YOUR_ROOT_PASSWORD with the root password.
-# 3. Encrypt this file before committing or storing:
-#      ansible-vault encrypt ~/.ansible/hosts
-# 4. If you prefer SSH-key auth (more secure):
-#    Remove ansible_ssh_pass / ansible_become_pass and add:
-#      ansible_ssh_private_key_file=~/.ssh/id_vps
+#  The project uses a single YAML inventory file that doubles
+#  as an ansible-vault secrets vault. See secrets.yaml.example.
+#
+#  Quick start:
+#    cp secrets.yaml.example secrets.yaml
+#    # fill in IPs, passwords, domain
+#    ansible-vault encrypt secrets.yaml
+#    ansible-playbook -i secrets.yaml playbook-foreign.yaml --ask-vault-pass
+#    ansible-playbook -i secrets.yaml playbook-relay.yaml   --ask-vault-pass
 # ============================================================

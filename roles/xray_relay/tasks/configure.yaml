@@ -1,0 +1,275 @@
+---
+# ══════════════════════════════════════════════════════════════════════════════
+#  Relay Xray credentials (UUID × 3, x25519 keypair, short_id)
+# ══════════════════════════════════════════════════════════════════════════════
+
+- name: Check if relay Xray config vars file exists
+  ansible.builtin.stat:
+    path: "{{ (xray_path, 'relay_config_vars.yaml') | path_join }}"
+  register: relay_vars_stat
+
+- name: Load existing relay Xray config vars
+  when: relay_vars_stat.stat.exists
+  block:
+    - name: Slurp relay config vars
+      ansible.builtin.slurp:
+        src: "{{ (xray_path, 'relay_config_vars.yaml') | path_join }}"
+      register: relay_vars_raw
+
+    - name: Set relay_xray fact from file
+      ansible.builtin.set_fact:
+        relay_xray: "{{ relay_vars_raw.content | b64decode | from_yaml }}"
+
+- name: Generate new relay Xray config vars
+  when: not relay_vars_stat.stat.exists
+  block:
+    - name: Generate relay short_id
+      ansible.builtin.command: openssl rand -hex 8
+      register: relay_short_id_result
+      changed_when: true
+
+    - name: Generate UUID — XHTTP exit
+      ansible.builtin.command: "{{ (xray_path, 'xray') | path_join }} uuid"
+      register: relay_uuid_xhttp_result
+      changed_when: true
+
+    - name: Generate UUID — Hysteria2 exit
+      ansible.builtin.command: "{{ (xray_path, 'xray') | path_join }} uuid"
+      register: relay_uuid_hy2_result
+      changed_when: true
+
+    - name: Generate UUID — AmneziaWG exit
+      ansible.builtin.command: "{{ (xray_path, 'xray') | path_join }} uuid"
+      register: relay_uuid_awg_result
+      changed_when: true
+
+    - name: Generate x25519 keypair
+      ansible.builtin.command: "{{ (xray_path, 'xray') | path_join }} x25519"
+      register: relay_x25519_result
+      changed_when: true
+
+    - name: Set relay_xray fact
+      ansible.builtin.set_fact:
+        relay_xray:
+          short_id:       "{{ relay_short_id_result.stdout }}"
+          uuid:           "{{ relay_uuid_xhttp_result.stdout }}"
+          uuid_hy2:       "{{ relay_uuid_hy2_result.stdout }}"
+          uuid_awg:       "{{ relay_uuid_awg_result.stdout }}"
+          x25519_private: "{{ relay_x25519_result.stdout.split('\n')[0].split(': ')[1] }}"
+          x25519_public:  "{{ relay_x25519_result.stdout.split('\n')[1].split(': ')[1] }}"
+
+    - name: Persist relay Xray config vars
+      ansible.builtin.template:
+        src: variables.yaml.j2
+        dest: "{{ (xray_path, 'relay_config_vars.yaml') | path_join }}"
+        mode: '0600'
+
+# Migration: add uuid_hy2 / uuid_awg to deployments that predate these fields
+- name: Migrate relay_xray — add uuid_hy2 if missing
+  when: relay_vars_stat.stat.exists and relay_xray.uuid_hy2 is not defined
+  block:
+    - name: Generate uuid_hy2
+      ansible.builtin.command: "{{ (xray_path, 'xray') | path_join }} uuid"
+      register: migrate_uuid_hy2
+      changed_when: true
+
+    - name: Patch relay_xray with uuid_hy2
+      ansible.builtin.set_fact:
+        relay_xray: "{{ relay_xray | combine({'uuid_hy2': migrate_uuid_hy2.stdout}) }}"
+
+    - name: Persist uuid_hy2
+      ansible.builtin.lineinfile:
+        path: "{{ (xray_path, 'relay_config_vars.yaml') | path_join }}"
+        line: 'uuid_hy2: "{{ relay_xray.uuid_hy2 }}"'
+
+- name: Migrate relay_xray — add uuid_awg if missing
+  when: relay_vars_stat.stat.exists and relay_xray.uuid_awg is not defined
+  block:
+    - name: Generate uuid_awg
+      ansible.builtin.command: "{{ (xray_path, 'xray') | path_join }} uuid"
+      register: migrate_uuid_awg
+      changed_when: true
+
+    - name: Patch relay_xray with uuid_awg
+      ansible.builtin.set_fact:
+        relay_xray: "{{ relay_xray | combine({'uuid_awg': migrate_uuid_awg.stdout}) }}"
+
+    - name: Persist uuid_awg
+      ansible.builtin.lineinfile:
+        path: "{{ (xray_path, 'relay_config_vars.yaml') | path_join }}"
+        line: 'uuid_awg: "{{ relay_xray.uuid_awg }}"'
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Fetch foreign server credentials
+#  (foreign VPS is already hardened — connect via ssh_port + ssh_user + key)
+# ══════════════════════════════════════════════════════════════════════════════
+
+- name: Fetch foreign server credentials (hardened SSH)
+  vars:
+    ansible_port:                 "{{ ssh_port }}"
+    ansible_user:                 "{{ ssh_user }}"
+    ansible_ssh_pass:             ""
+    ansible_password:             ""
+    ansible_ssh_private_key_file: "{{ ssh_public_key_path | regex_replace('\\.pub$', '') }}"
+    ansible_become:               true
+    ansible_become_method:        sudo
+    ansible_become_pass:          ""
+  block:
+    - name: Fetch foreign Xray config vars
+      ansible.builtin.slurp:
+        src: "{{ (xray_path, 'config_vars.yaml') | path_join }}"
+      delegate_to: "{{ relay_foreign_host }}"
+      register: foreign_xray_vars_raw
+
+    - name: Set foreign_xray fact
+      ansible.builtin.set_fact:
+        foreign_xray: "{{ foreign_xray_vars_raw.content | b64decode | from_yaml }}"
+
+    - name: Fetch foreign Hysteria2 vars
+      ansible.builtin.slurp:
+        src: "{{ (hysteria2_path, 'vars.yaml') | path_join }}"
+      delegate_to: "{{ relay_foreign_host }}"
+      register: foreign_hy2_vars_raw
+
+    - name: Set foreign_hy2 fact
+      ansible.builtin.set_fact:
+        foreign_hy2: "{{ foreign_hy2_vars_raw.content | b64decode | from_yaml }}"
+
+    - name: Fetch foreign AmneziaWG vars
+      ansible.builtin.slurp:
+        src: /etc/amnezia/amneziawg/awg_vars.yaml
+      delegate_to: "{{ relay_foreign_host }}"
+      register: foreign_awg_vars_raw
+
+    - name: Set foreign_awg fact
+      ansible.builtin.set_fact:
+        foreign_awg: "{{ foreign_awg_vars_raw.content | b64decode | from_yaml }}"
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  AmneziaWG client on relay
+# ══════════════════════════════════════════════════════════════════════════════
+
+- name: Create AmneziaWG config directory on relay
+  ansible.builtin.file:
+    path: /etc/amnezia/amneziawg
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+
+- name: Check if relay AWG vars file exists
+  ansible.builtin.stat:
+    path: /etc/amnezia/amneziawg/relay_vars.yaml
+  register: relay_awg_vars_stat
+
+- name: Load existing relay AWG vars
+  when: relay_awg_vars_stat.stat.exists
+  block:
+    - name: Slurp relay AWG vars
+      ansible.builtin.slurp:
+        src: /etc/amnezia/amneziawg/relay_vars.yaml
+      register: relay_awg_vars_raw
+
+    - name: Set relay_awg fact from file
+      ansible.builtin.set_fact:
+        relay_awg: "{{ relay_awg_vars_raw.content | b64decode | from_yaml }}"
+
+- name: Generate relay AWG keypair
+  when: not relay_awg_vars_stat.stat.exists
+  block:
+    - name: Generate relay AWG private key
+      ansible.builtin.command: wg genkey
+      register: relay_awg_privkey
+      changed_when: true
+
+    - name: Write private key to temp file
+      ansible.builtin.copy:
+        content: "{{ relay_awg_privkey.stdout }}"
+        dest: /tmp/relay_awg_priv.key
+        mode: '0600'
+
+    - name: Derive relay AWG public key
+      ansible.builtin.shell: wg pubkey < /tmp/relay_awg_priv.key
+      register: relay_awg_pubkey
+      changed_when: true
+
+    - name: Remove temp key file
+      ansible.builtin.file:
+        path: /tmp/relay_awg_priv.key
+        state: absent
+
+    - name: Set relay_awg fact
+      ansible.builtin.set_fact:
+        relay_awg:
+          client_private_key: "{{ relay_awg_privkey.stdout }}"
+          client_public_key:  "{{ relay_awg_pubkey.stdout }}"
+
+    - name: Persist relay AWG vars
+      ansible.builtin.template:
+        src: relay_awg_vars.yaml.j2
+        dest: /etc/amnezia/amneziawg/relay_vars.yaml
+        mode: '0600'
+        owner: root
+        group: root
+
+- name: Deploy relay AWG client config (awg1)
+  ansible.builtin.template:
+    src: awg1_client.conf.j2
+    dest: /etc/amnezia/amneziawg/awg1.conf
+    mode: '0600'
+    owner: root
+    group: root
+  notify: Restart awg1
+
+# ── Register relay as peer on the foreign AWG server ─────────────────────────
+
+- name: Register relay as AWG peer on foreign server (hardened SSH)
+  vars:
+    ansible_port:                 "{{ ssh_port }}"
+    ansible_user:                 "{{ ssh_user }}"
+    ansible_ssh_pass:             ""
+    ansible_password:             ""
+    ansible_ssh_private_key_file: "{{ ssh_public_key_path | regex_replace('\\.pub$', '') }}"
+    ansible_become:               true
+    ansible_become_method:        sudo
+    ansible_become_pass:          ""
+  block:
+    - name: Add relay as AWG peer in foreign server config
+      ansible.builtin.blockinfile:
+        path: /etc/amnezia/amneziawg/awg0.conf
+        marker: "# {mark} RELAY PEER"
+        block: |
+          [Peer]
+          # Relay node
+          PublicKey  = {{ relay_awg.client_public_key }}
+          AllowedIPs = {{ awg_relay_ip | default('10.66.66.3') }}/32
+      delegate_to: "{{ relay_foreign_host }}"
+
+    - name: Apply relay peer to foreign AWG interface (no service restart)
+      ansible.builtin.command: >
+        awg set awg0
+        peer {{ relay_awg.client_public_key }}
+        allowed-ips {{ awg_relay_ip | default('10.66.66.3') }}/32
+      delegate_to: "{{ relay_foreign_host }}"
+      changed_when: true
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Write Xray and Hysteria2 client configs
+# ══════════════════════════════════════════════════════════════════════════════
+
+- name: Write relay Xray config.json
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: "{{ (xray_path, 'config.json') | path_join }}"
+    mode: '0644'
+  changed_when: >
+    (xray_version_current.content is not defined) or
+    (xray_version_current.content | b64decode | default('') | trim != xray_version)
+  notify: Restart Xray
+
+- name: Write Hysteria2 client config
+  ansible.builtin.template:
+    src: hy2_client.yaml.j2
+    dest: "{{ (hysteria2_path, 'relay_client.yaml') | path_join }}"
+    mode: '0600'
+  notify: Restart hy2-relay

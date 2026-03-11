@@ -1,0 +1,28 @@
+# AmneziaWG client config for the relay node.
+# Interface name: awg1  (service: awg-quick@awg1)
+#
+# Table = off: wg-quick does NOT add system routes.
+# Xray routes UUID-awg traffic through awg1 via sockopt.interface,
+# so the relay's own SSH / Hysteria2 / Xray-to-foreign connections
+# are unaffected.
+
+[Interface]
+PrivateKey = {{ relay_awg.client_private_key }}
+Address    = {{ awg_relay_ip | default('10.66.66.3') }}/32
+Table      = off
+# AmneziaWG obfuscation parameters (must match foreign server)
+Jc   = {{ foreign_awg.jc }}
+Jmin = {{ foreign_awg.jmin }}
+Jmax = {{ foreign_awg.jmax }}
+S1   = {{ foreign_awg.s1 }}
+S2   = {{ foreign_awg.s2 }}
+H1   = {{ foreign_awg.h1 }}
+H2   = {{ foreign_awg.h2 }}
+H3   = {{ foreign_awg.h3 }}
+H4   = {{ foreign_awg.h4 }}
+
+[Peer]
+PublicKey           = {{ foreign_awg.server_public_key }}
+Endpoint            = {{ relay_foreign_ip }}:{{ awg_port | default(51820) }}
+AllowedIPs          = 0.0.0.0/0, ::/0
+PersistentKeepalive = 25

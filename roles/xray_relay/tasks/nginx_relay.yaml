@@ -1,0 +1,91 @@
+---
+# ── Nginx masquerade site for Xray REALITY self-steal (relay VPS) ─────────────
+# Phase 1: HTTP-only nginx so certbot can complete the webroot challenge.
+# Phase 2: Full config — HTTP redirect + HTTPS on 127.0.0.1:4443 (cert-steal source).
+
+- name: Set webserver_domain fact for relay masquerade templates
+  ansible.builtin.set_fact:
+    webserver_domain: "{{ relay_domain }}"
+
+- name: Install nginx and certbot
+  ansible.builtin.apt:
+    name:
+      - nginx
+      - certbot
+    state: present
+    update_cache: true
+
+- name: Create webroot for relay masquerade site
+  ansible.builtin.file:
+    path: /var/www/{{ relay_domain }}
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0755'
+
+- name: Deploy masquerade auth page
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/roles/webserver/templates/index.html.j2"
+    dest: /var/www/{{ relay_domain }}/index.html
+    owner: www-data
+    group: www-data
+    mode: '0644'
+
+- name: Deploy robots.txt
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/roles/webserver/templates/robots.txt.j2"
+    dest: /var/www/{{ relay_domain }}/robots.txt
+    owner: www-data
+    group: www-data
+    mode: '0644'
+
+- name: Remove default nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+# Phase 1: HTTP-only so certbot can complete the webroot challenge
+- name: Deploy nginx HTTP-only config for certbot challenge
+  ansible.builtin.template:
+    src: nginx_relay_http.conf.j2
+    dest: /etc/nginx/sites-available/relay-masquerade
+    mode: '0644'
+
+- name: Enable relay nginx site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/relay-masquerade
+    dest: /etc/nginx/sites-enabled/relay-masquerade
+    state: link
+
+- name: Start and enable nginx
+  ansible.builtin.systemd:
+    name: nginx
+    state: restarted
+    enabled: true
+
+- name: Obtain Let's Encrypt certificate for relay domain
+  ansible.builtin.command: >
+    certbot certonly --webroot
+      -w /var/www/{{ relay_domain }}
+      -d {{ relay_domain }}
+      -m {{ certbot_email }}
+      --agree-tos --non-interactive
+  args:
+    creates: /etc/letsencrypt/live/{{ relay_domain }}/fullchain.pem
+
+# Phase 2: Full config — HTTP redirect + HTTPS on 127.0.0.1:4443 (cert now exists)
+- name: Deploy full nginx config (HTTP redirect + loopback HTTPS on 127.0.0.1:4443)
+  ansible.builtin.template:
+    src: nginx_relay.conf.j2
+    dest: /etc/nginx/sites-available/relay-masquerade
+    mode: '0644'
+  notify: Reload nginx
+
+- name: Enable certbot auto-renewal (weekly cron)
+  ansible.builtin.cron:
+    name: certbot-renewal-relay
+    weekday: "1"
+    hour: "3"
+    minute: "45"
+    job: "certbot renew --quiet && systemctl reload nginx"
+    user: root

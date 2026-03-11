@@ -1,0 +1,21 @@
+# Hysteria2 running in CLIENT mode on the relay server.
+# Listens on 127.0.0.1:10800 (SOCKS5) — Xray routes UUID-hy2 traffic here.
+server: "{{ relay_foreign_ip }}:{{ hysteria2_port | default(443) }}"
+
+auth: "{{ foreign_hy2.auth_password }}"
+
+obfs:
+  type: salamander
+  salamander:
+    password: "{{ foreign_hy2.obfs_password }}"
+
+# Foreign server uses a self-signed cert (CN = xray_sni_dest).
+tls:
+  insecure: true
+
+socks5:
+  listen: 127.0.0.1:{{ relay_hy2_socks_port | default(10800) }}
+
+bandwidth:
+  up: 1 gbps
+  down: 1 gbps

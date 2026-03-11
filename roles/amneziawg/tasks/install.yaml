@@ -4,6 +4,11 @@
     name: software-properties-common
     state: present
 
+- name: Install kernel headers (required for DKMS build)
+  ansible.builtin.apt:
+    name: "linux-headers-{{ ansible_kernel }}"
+    state: present
+
 - name: Add AmneziaWG PPA repository
   ansible.builtin.apt_repository:
     repo: ppa:amnezia/ppa
@@ -17,3 +22,8 @@
       - wireguard-tools
     state: present
     update_cache: yes
+
+- name: Load amneziawg kernel module
+  ansible.builtin.command: modprobe amneziawg
+  changed_when: false
+  failed_when: false

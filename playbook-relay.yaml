@@ -1,0 +1,68 @@
+---
+# ============================================================
+#  Bifrost — Step 2: Russian relay VPS
+#
+#  Run AFTER playbook-foreign.yaml. During setup this playbook
+#  SSHes into the foreign VPS to fetch credentials and register
+#  the relay as an AmneziaWG peer — both servers must be
+#  reachable at the same time.
+#
+#  Client connects to the relay on port 443 with VLESS+TCP+REALITY.
+#  Three UUIDs select the exit protocol toward the foreign VPS:
+#
+#    UUID-xhttp  →  VLESS + XHTTP + REALITY  (TCP 8443)
+#    UUID-hy2    →  Hysteria2 QUIC           (UDP 443)
+#    UUID-awg    →  AmneziaWG tunnel         (UDP 51820)
+#
+#  Usage:
+#    ansible-playbook -i secrets.yaml playbook-relay.yaml --ask-vault-pass
+# ============================================================
+
+- name: Deploy Xray relay on Russian VPS
+  hosts: relay
+  become: true
+  gather_facts: true
+
+  vars:
+    # ── Foreign VPS reference (auto-resolved from inventory) ───────────────
+    relay_foreign_host: "{{ groups['foreign'][0] }}"
+    relay_foreign_ip:   "{{ hostvars[groups['foreign'][0]].ansible_host }}"
+    relay_foreign_sni:  "{{ foreign_domain }}"
+
+    # ── Xray ────────────────────────────────────────────────────────────────
+    xray_version:    "v26.2.6"
+    xray_platform:   "linux-64"
+    xray_path:       "/opt/xray"
+
+    # ── Hysteria2 client ─────────────────────────────────────────────────────
+    hysteria2_version:  "v2.6.1"
+    hysteria2_platform: "linux-amd64"
+    hysteria2_path:     "/opt/hysteria2"
+    hysteria2_port:     443
+    relay_hy2_socks_port: 10800
+
+    # ── AmneziaWG client ─────────────────────────────────────────────────────
+    awg_port:        51820
+    awg_relay_ip:    "10.66.66.3"   # relay's IP inside AWG subnet (server=.1, client=.2)
+
+    # ── Xray → foreign ──────────────────────────────────────────────────────
+    relay_foreign_xhttp_port: 8443
+
+  roles:
+    - xray_relay
+
+- name: Harden relay VPS
+  hosts: relay
+  become: true
+  gather_facts: false
+
+  vars:
+    # Relay listens on TCP 443 (covered by "ufw allow https").
+    # No additional VPN ports needed inbound — relay connects OUT to foreign.
+    enable_xray:      false
+    enable_amneziawg: false
+    enable_hysteria2: false
+    # ssh_port, ssh_user, ssh_public_key_path etc. come from secrets.yaml all.vars
+
+  roles:
+    - security

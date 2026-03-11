@@ -1,0 +1,14 @@
+# HTTP-only — Let's Encrypt webroot challenge (phase 1, replaced after cert is issued)
+server {
+    listen 80;
+    server_name {{ relay_domain }};
+    root /var/www/{{ relay_domain }};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/{{ relay_domain }};
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}

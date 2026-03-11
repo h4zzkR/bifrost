@@ -1,0 +1,52 @@
+# HTTP — Let's Encrypt renewal + redirect to HTTPS
+server {
+    listen 80;
+    server_name {{ relay_domain }};
+    root /var/www/{{ relay_domain }};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/{{ relay_domain }};
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# Loopback-only HTTPS — Xray REALITY self-steal source.
+# Xray (port 443) forwards non-REALITY TLS connections here.
+# Probers see a genuine HTTPS auth page with a real Let's Encrypt cert.
+server {
+    listen 127.0.0.1:4443 ssl;
+    server_name {{ relay_domain }};
+
+    ssl_certificate     /etc/letsencrypt/live/{{ relay_domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ relay_domain }}/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+
+    server_tokens off;
+
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+    add_header X-Content-Type-Options    "nosniff"                              always;
+    add_header X-Frame-Options           "SAMEORIGIN"                           always;
+    add_header Referrer-Policy           "same-origin"                          always;
+    add_header Cache-Control             "no-store"                             always;
+
+    root  /var/www/{{ relay_domain }};
+    index index.html;
+
+    # Fake auth endpoint — returns 401 so login form feels real to probers
+    location = /auth/login {
+        return 401;
+    }
+
+    # Fake forgot-password page — serve main page
+    location = /auth/forgot-password {
+        try_files /index.html =404;
+    }
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}

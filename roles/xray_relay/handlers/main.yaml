@@ -1,0 +1,20 @@
+---
+- name: Reload nginx
+  ansible.builtin.systemd:
+    name: nginx
+    state: reloaded
+
+- name: Restart Xray
+  ansible.builtin.systemd:
+    name: xray
+    state: restarted
+
+- name: Restart hy2-relay
+  ansible.builtin.systemd:
+    name: hy2-relay
+    state: restarted
+
+- name: Restart awg1
+  ansible.builtin.systemd:
+    name: awg-quick@awg1
+    state: restarted

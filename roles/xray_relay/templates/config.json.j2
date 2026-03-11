@@ -1,0 +1,137 @@
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "listen": "0.0.0.0",
+      "port": 443,
+      "protocol": "vless",
+      "tag": "vless-in",
+      "settings": {
+        "clients": [
+          {
+            "id": "{{ relay_xray.uuid }}",
+            "flow": "xtls-rprx-vision",
+            "comment": "exit: VLESS+XHTTP+REALITY"
+          },
+          {
+            "id": "{{ relay_xray.uuid_hy2 }}",
+            "flow": "xtls-rprx-vision",
+            "comment": "exit: Hysteria2 QUIC"
+          },
+          {
+            "id": "{{ relay_xray.uuid_awg }}",
+            "flow": "xtls-rprx-vision",
+            "comment": "exit: AmneziaWG tunnel"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "127.0.0.1:4443",
+          "serverNames": [
+            "{{ relay_domain }}"
+          ],
+          "privateKey": "{{ relay_xray.x25519_private }}",
+          "shortIds": [
+            "{{ relay_xray.short_id }}"
+          ]
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": true
+      }
+    }
+  ],
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      {
+        "type": "field",
+        "user": ["{{ relay_xray.uuid_hy2 }}"],
+        "outboundTag": "hy2-socks"
+      },
+      {
+        "type": "field",
+        "user": ["{{ relay_xray.uuid_awg }}"],
+        "outboundTag": "awg-exit"
+      }
+    ]
+  },
+  "outbounds": [
+    {
+      "protocol": "vless",
+      "tag": "xhttp-proxy",
+      "settings": {
+        "vnext": [
+          {
+            "address": "{{ relay_foreign_ip }}",
+            "port": {{ relay_foreign_xhttp_port | default(8443) }},
+            "users": [
+              {
+                "id": "{{ foreign_xray.uuid }}",
+                "encryption": "none"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "xhttp",
+        "security": "reality",
+        "xhttpSettings": {
+          "mode": "stream-one",
+          "path": "/{{ foreign_xray.xhttp_path }}"
+        },
+        "realitySettings": {
+          "serverName": "{{ relay_foreign_sni }}",
+          "fingerprint": "chrome",
+          "publicKey": "{{ foreign_xray.x25519_public }}",
+          "shortId": "{{ foreign_xray.short_id }}"
+        }
+      }
+    },
+    {
+      "protocol": "socks",
+      "tag": "hy2-socks",
+      "settings": {
+        "servers": [
+          {
+            "address": "127.0.0.1",
+            "port": {{ relay_hy2_socks_port | default(10800) }}
+          }
+        ]
+      }
+    },
+    {
+      "protocol": "freedom",
+      "tag": "awg-exit",
+      "settings": {
+        "domainStrategy": "UseIPv4"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "interface": "awg1"
+        }
+      }
+    },
+    {
+      "protocol": "freedom",
+      "tag": "direct",
+      "settings": {
+        "domainStrategy": "UseIPv4"
+      }
+    },
+    {
+      "protocol": "blackhole",
+      "tag": "block"
+    }
+  ]
+}

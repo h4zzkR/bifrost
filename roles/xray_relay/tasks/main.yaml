@@ -1,0 +1,111 @@
+---
+# ── Nginx masquerade site (self-steal) ────────────────────────────────────────
+
+- name: Deploy nginx masquerade site for Xray self-steal
+  ansible.builtin.include_tasks: nginx_relay.yaml
+
+# ── Xray ─────────────────────────────────────────────────────────────────────
+
+- name: Install Xray binary
+  ansible.builtin.include_role:
+    name: xray
+    tasks_from: install.yaml
+
+- name: Deploy Xray systemd service
+  ansible.builtin.template:
+    src: xray.service.j2
+    dest: /etc/systemd/system/xray.service
+    owner: root
+    group: root
+    mode: '0644'
+
+# ── Hysteria2 client ──────────────────────────────────────────────────────────
+
+- name: Install Hysteria2 binary (client mode)
+  ansible.builtin.include_role:
+    name: hysteria2
+    tasks_from: install.yaml
+
+- name: Deploy hy2-relay systemd service
+  ansible.builtin.template:
+    src: hysteria2_relay.service.j2
+    dest: /etc/systemd/system/hy2-relay.service
+    owner: root
+    group: root
+    mode: '0644'
+
+# ── AmneziaWG client ──────────────────────────────────────────────────────────
+
+- name: Install AmneziaWG packages (client mode)
+  ansible.builtin.include_role:
+    name: amneziawg
+    tasks_from: install.yaml
+
+# ── systemd ───────────────────────────────────────────────────────────────────
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Enable and start Xray
+  ansible.builtin.systemd:
+    name: xray
+    enabled: true
+    state: started
+
+- name: Enable and start hy2-relay
+  ansible.builtin.systemd:
+    name: hy2-relay
+    enabled: true
+    state: started
+
+# ── Configure (keys, credentials, peer registration) ─────────────────────────
+
+- name: Configure relay
+  ansible.builtin.include_tasks: configure.yaml
+
+# ── Enable AWG client after config is written ─────────────────────────────────
+
+- name: Load amneziawg kernel module
+  ansible.builtin.command: modprobe amneziawg
+  changed_when: false
+  failed_when: false
+
+- name: Enable and start awg-quick@awg1
+  ansible.builtin.systemd:
+    name: awg-quick@awg1
+    enabled: true
+    state: started
+    daemon_reload: true
+
+# ── Client links ──────────────────────────────────────────────────────────────
+
+- name: Write client connect links on relay server
+  ansible.builtin.template:
+    src: client_connect_link.txt.j2
+    dest: ~/relay_client_connect_link.txt
+    owner: "{{ ansible_user_id | default(ansible_user) }}"
+    group: "{{ ansible_user_id | default(ansible_user) }}"
+
+- name: Read client connect links
+  ansible.builtin.command: cat ~/relay_client_connect_link.txt
+  register: relay_link_content
+  changed_when: false
+
+- name: Display relay connection links
+  ansible.builtin.debug:
+    msg: |
+      ========== Relay client connection links ==========
+      XHTTP exit    : {{ relay_link_content.stdout_lines[0] }}
+      Hysteria2 exit: {{ relay_link_content.stdout_lines[1] }}
+      AWG exit      : {{ relay_link_content.stdout_lines[2] }}
+      ==================================================
+      All three links use the same server / port / SNI.
+      Switch exit protocol by choosing a different link.
+
+- name: Save connection links locally
+  ansible.builtin.copy:
+    content: "{{ relay_link_content.stdout }}"
+    dest: "{{ playbook_dir }}/relay_client_connect_link.txt"
+  delegate_to: localhost
+  become: false
