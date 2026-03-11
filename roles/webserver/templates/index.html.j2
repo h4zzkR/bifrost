@@ -3,36 +3,202 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ webserver_domain }}</title>
+  <meta name="robots" content="noindex, nofollow">
+  <title>Sign In — {{ webserver_domain }}</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f5f5f5;
-      color: #333;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      background: #f0f2f5;
+      color: #1c1e21;
+      min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
     }
-    .container {
+
+    .card {
       background: #fff;
       border-radius: 8px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-      padding: 60px 80px;
-      text-align: center;
-      max-width: 480px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.12), 0 0 0 1px rgba(0,0,0,.04);
+      padding: 40px 36px 32px;
+      width: 100%;
+      max-width: 400px;
     }
-    h1 { font-size: 1.8rem; font-weight: 600; margin-bottom: 12px; }
-    p  { color: #666; line-height: 1.6; }
-    .domain { color: #888; font-size: 0.9rem; margin-top: 32px; }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .logo svg {
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1c1e21;
+      letter-spacing: -.2px;
+      word-break: break-all;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      color: #1c1e21;
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #444;
+      margin-bottom: 6px;
+    }
+
+    input[type="email"],
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #ccd0d5;
+      border-radius: 6px;
+      font-size: 15px;
+      color: #1c1e21;
+      background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+      outline: none;
+    }
+
+    input[type="email"]:focus,
+    input[type="password"]:focus,
+    input[type="text"]:focus {
+      border-color: #1877f2;
+      box-shadow: 0 0 0 2px rgba(24,119,242,.2);
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .remember {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      color: #444;
+      user-select: none;
+    }
+
+    .remember input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+
+    .btn-primary {
+      background: #1877f2;
+      color: #fff;
+    }
+
+    .btn-primary:hover { background: #166fe5; }
+    .btn-primary:active { background: #1467d4; }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #e4e6ea;
+      margin: 20px 0;
+    }
+
+    .links {
+      text-align: center;
+    }
+
+    .links a {
+      color: #1877f2;
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .links a:hover { text-decoration: underline; }
+
+    .footer {
+      margin-top: 24px;
+      text-align: center;
+      color: #8a8d91;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Welcome</h1>
-    <p>This site is currently under construction.<br>Check back soon.</p>
-    <p class="domain">{{ webserver_domain }}</p>
+  <div class="card">
+    <div class="logo">
+      <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="36" height="36" rx="8" fill="#1877f2"/>
+        <path d="M18 8C13.03 8 9 12.03 9 17c0 3.86 2.44 7.17 5.91 8.47V22h-2.5v-3H14.9v-2.33c0-2.48 1.48-3.85 3.74-3.85 1.08 0 2.21.19 2.21.19v2.43h-1.24c-1.23 0-1.61.76-1.61 1.54V19h2.74l-.44 3H18v3.47C21.56 24.17 24 20.86 24 17c0-4.97-4.03-9-9-9z" fill="white"/>
+      </svg>
+      <span class="logo-text">{{ webserver_domain }}</span>
+    </div>
+
+    <h1>Sign in</h1>
+
+    <form method="POST" action="/auth/login" autocomplete="on">
+      <div class="field">
+        <label for="email">Email address</label>
+        <input type="email" id="email" name="email"
+               autocomplete="email" placeholder="you@example.com" required>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password"
+               autocomplete="current-password" placeholder="••••••••" required>
+      </div>
+      <div class="row">
+        <label class="remember">
+          <input type="checkbox" name="remember" value="1"> Remember me
+        </label>
+      </div>
+      <button type="submit" class="btn btn-primary">Sign in</button>
+    </form>
+
+    <hr class="divider">
+
+    <div class="links">
+      <a href="/auth/forgot-password">Forgot your password?</a>
+    </div>
+  </div>
+
+  <div class="footer">
+    &copy; {{ webserver_domain }} &mdash; Private access only
   </div>
 </body>
 </html>

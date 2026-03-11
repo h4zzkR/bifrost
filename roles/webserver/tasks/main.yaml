@@ -15,10 +15,18 @@
     group: www-data
     mode: '0755'
 
-- name: Deploy placeholder website
+- name: Deploy website index
   ansible.builtin.template:
     src: index.html.j2
     dest: /var/www/{{ webserver_domain }}/index.html
+    owner: www-data
+    group: www-data
+    mode: '0644'
+
+- name: Deploy robots.txt
+  ansible.builtin.template:
+    src: robots.txt.j2
+    dest: /var/www/{{ webserver_domain }}/robots.txt
     owner: www-data
     group: www-data
     mode: '0644'

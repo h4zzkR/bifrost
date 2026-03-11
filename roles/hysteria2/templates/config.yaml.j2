@@ -14,10 +14,9 @@ auth:
   password: {{ hy2.auth_password }}
 
 masquerade:
-  type: proxy
-  proxy:
-    url: https://{{ xray_sni_dest }}
-    rewriteHost: true
+  type: file
+  file:
+    dir: /var/www/{{ webserver_domain }}
 
 bandwidth:
   up: 1 gbps

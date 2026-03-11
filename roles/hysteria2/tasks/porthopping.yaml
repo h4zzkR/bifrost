@@ -1,0 +1,23 @@
+---
+# Port hopping: redirect a wide UDP port range to the main Hysteria2 port via
+# iptables DNAT so each new connection may arrive on a different port,
+# preventing TSPU from fingerprinting the flow by (src, dst-port) tuple.
+
+- name: Install iptables-persistent (survives reboot)
+  ansible.builtin.apt:
+    name: iptables-persistent
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Add IPv4 DNAT rule for Hysteria2 port hopping
+  ansible.builtin.iptables:
+    table: nat
+    chain: PREROUTING
+    protocol: udp
+    destination_port: "{{ hysteria2_hop_ports | replace('-', ':') }}"
+    jump: DNAT
+    to_destination: ":{{ hysteria2_port | default(443) }}"
+    comment: "Hysteria2 port hopping"
+    state: present
+  notify: Save iptables rules
