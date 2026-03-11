@@ -1,4 +1,10 @@
 ---
+- name: Wait for dpkg lock to be released
+  ansible.builtin.shell: |
+    while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 2; done
+  changed_when: false
+  timeout: 120
+
 - name: Update apt cache
   apt:
     update_cache: yes

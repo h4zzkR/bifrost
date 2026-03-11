@@ -54,3 +54,31 @@
       ansible.builtin.file:
         path: "{{ xray_tmp_filename }}"
         state: absent
+
+- name: Download runetfreedom geosite.dat (Russia-focused rules)
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geosite.dat"
+    dest: "{{ (xray_path, 'geosite.dat') | path_join }}"
+    mode: '0644'
+    force: true
+
+- name: Download runetfreedom geoip.dat (Russia-focused rules)
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geoip.dat"
+    dest: "{{ (xray_path, 'geoip.dat') | path_join }}"
+    mode: '0644'
+    force: true
+
+- name: Schedule weekly geo-database update for Xray
+  ansible.builtin.cron:
+    name: xray-geodat-update
+    weekday: "2"
+    hour: "4"
+    minute: "0"
+    user: root
+    job: >-
+      wget -q -O {{ xray_path }}/geosite.dat
+      https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geosite.dat &&
+      wget -q -O {{ xray_path }}/geoip.dat
+      https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geoip.dat &&
+      systemctl restart xray

@@ -67,6 +67,7 @@
       -d {{ webserver_domain }}
       -m {{ certbot_email }}
       --agree-tos --non-interactive
+      {{ '--staging' if certbot_staging | default(false) | bool else '' }}
   args:
     creates: /etc/letsencrypt/live/{{ webserver_domain }}/fullchain.pem
 

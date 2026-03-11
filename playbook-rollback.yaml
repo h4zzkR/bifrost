@@ -326,14 +326,16 @@
         purge: true
         autoremove: true
 
-    - name: "[relay/nginx] Remove webroot and Let's Encrypt cert"
-      ansible.builtin.file:
-        path: "{{ item }}"
+    - name: "[relay/nginx] Remove certbot renewal cron"
+      ansible.builtin.cron:
+        name: certbot-renewal-relay
         state: absent
-      loop:
-        - /var/www/{{ relay_domain | default('placeholder') }}
-        - /etc/letsencrypt/live/{{ relay_domain | default('placeholder') }}
-        - /etc/letsencrypt/renewal/{{ relay_domain | default('placeholder') }}.conf
+        user: root
+
+    - name: "[relay/nginx] Remove webroot"
+      ansible.builtin.file:
+        path: /var/www/{{ relay_domain | default('placeholder') }}
+        state: absent
       ignore_errors: true
 
     # ── Home dir artifacts ────────────────────────────────────────────────────

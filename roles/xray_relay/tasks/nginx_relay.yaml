@@ -44,6 +44,28 @@
     path: /etc/nginx/sites-enabled/default
     state: absent
 
+
+# Ensure port 80 is open before certbot runs (may be closed after rollback)
+- name: Allow HTTP in UFW for certbot challenge
+  ansible.builtin.command: ufw allow 80/tcp
+  register: ufw_allow_http
+  changed_when: "'Rules updated' in ufw_allow_http.stdout"
+  failed_when: false
+
+- name: Reload UFW to apply HTTP rule
+  ansible.builtin.command: ufw reload
+  changed_when: false
+  failed_when: false
+
+# Fallback: insert iptables ACCEPT for port 80 in case UFW is inactive
+- name: Allow port 80 via iptables (UFW-inactive fallback)
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: '80'
+    jump: ACCEPT
+    state: present
+
 # Phase 1: HTTP-only so certbot can complete the webroot challenge
 - name: Deploy nginx HTTP-only config for certbot challenge
   ansible.builtin.template:
@@ -70,6 +92,7 @@
       -d {{ relay_domain }}
       -m {{ certbot_email }}
       --agree-tos --non-interactive
+      {{ '--staging' if certbot_staging | default(false) | bool else '' }}
   args:
     creates: /etc/letsencrypt/live/{{ relay_domain }}/fullchain.pem
 
