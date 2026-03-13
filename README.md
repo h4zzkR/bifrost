@@ -284,6 +284,7 @@ Hardening, AmneziaWG, XHTTP, Hysteria2, self-steal, 2-hop relay — [h4zzkR](htt
 
 https://ntc.party/t/%D1%80%D0%B0%D0%B1%D0%BE%D1%87%D0%B8%D0%B9-%D0%BE%D0%B1%D1%85%D0%BE%D0%B4-%D0%B1%D0%B5%D0%BB%D1%8B%D1%85-%D1%81%D0%BF%D0%B8%D1%81%D0%BA%D0%BE%D0%B2/21884/136
 
+https://web.archive.org/web/20260312164333/https://habr.com/ru/articles/1009542/
 
 
 MIT License
