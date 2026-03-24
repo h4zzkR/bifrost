@@ -257,6 +257,27 @@
 #  Write Xray and Hysteria2 client configs
 # ══════════════════════════════════════════════════════════════════════════════
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  Geo-data auto-update cron jobs
+# ══════════════════════════════════════════════════════════════════════════════
+
+- name: Cron — update geoip.dat and geosite.dat weekly
+  ansible.builtin.cron:
+    name: "xray-geodata-update"
+    weekday: "*"
+    hour: "0"
+    minute: "0"
+    job: >-
+      wget -q -O {{ xray_path }}/geoip.dat
+      https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geoip.dat
+      && wget -q -O {{ xray_path }}/geosite.dat
+      https://raw.githubusercontent.com/runetfreedom/russia-v2ray-rules-dat/release/geosite.dat
+      && systemctl restart xray
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Write Xray and Hysteria2 client configs
+# ══════════════════════════════════════════════════════════════════════════════
+
 - name: Write relay Xray config.json
   ansible.builtin.template:
     src: config.json.j2

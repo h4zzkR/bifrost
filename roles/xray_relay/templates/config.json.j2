@@ -51,34 +51,25 @@
     }
   ],
   "routing": {
-    "domainStrategy": "AsIs",
-    "rules": [
+  "domainStrategy": "IPIfNonMatch",
+  "rules": [
       {
         "type": "field",
         "user": ["{{ relay_xray.uuid_hy2 }}"],
-        "domain": ["habr.com", "geosite:ru-blocked"],
+        "domain": ["geosite:category-ru-blocked"],
         "outboundTag": "hy2-socks"
       },
       {
         "type": "field",
         "user": ["{{ relay_xray.uuid_awg }}"],
-        "domain": ["habr.com", "geosite:ru-blocked"],
+        "domain": ["geosite:category-ru-blocked"],
         "outboundTag": "awg-exit"
       },
       {
         "type": "field",
-        "domain": ["habr.com", "geosite:ru-blocked"],
+        "user": ["{{ relay_xray.uuid }}"],
+        "domain": ["geosite:category-ru-blocked"],
         "outboundTag": "xhttp-proxy"
-      },
-      {
-        "type": "field",
-        "domain": ["regexp:\\.ru$", "regexp:\\.su$", "regexp:\\.рф$", "domain:vk.com", "domain:vk.me", "domain:userapi.com"],
-        "outboundTag": "block"
-      },
-      {
-        "type": "field",
-        "ip": ["geoip:private"],
-        "outboundTag": "block"
       },
       {
         "type": "field",
@@ -94,6 +85,16 @@
         "type": "field",
         "user": ["{{ relay_xray.uuid }}"],
         "outboundTag": "xhttp-proxy"
+      },
+      {
+        "type": "field",
+        "domain": ["regexp:\\.ru$", "regexp:\\.su$", "regexp:\\.рф$", "domain:vk.com", "domain:vk.me", "domain:userapi.com"],
+        "outboundTag": "block"
+      },
+      {
+        "type": "field",
+        "ip": ["geoip:ru", "geoip:private"],
+        "outboundTag": "block"
       }
     ]
   },
