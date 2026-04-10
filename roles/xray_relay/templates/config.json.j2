@@ -24,6 +24,11 @@
             "id": "{{ relay_xray.uuid_awg }}",
             "flow": "xtls-rprx-vision",
             "comment": "exit: AmneziaWG tunnel"
+          },
+          {
+            "id": "{{ relay_xray.uuid_grpc }}",
+            "flow": "xtls-rprx-vision",
+            "comment": "exit: VLESS+gRPC+REALITY"
           }
         ],
         "decryption": "none"
@@ -73,6 +78,12 @@
       },
       {
         "type": "field",
+        "user": ["{{ relay_xray.uuid_grpc }}"],
+        "domain": ["geosite:category-ru-blocked"],
+        "outboundTag": "grpc-proxy"
+      },
+      {
+        "type": "field",
         "user": ["{{ relay_xray.uuid_hy2 }}"],
         "outboundTag": "hy2-socks"
       },
@@ -85,6 +96,11 @@
         "type": "field",
         "user": ["{{ relay_xray.uuid }}"],
         "outboundTag": "xhttp-proxy"
+      },
+      {
+        "type": "field",
+        "user": ["{{ relay_xray.uuid_grpc }}"],
+        "outboundTag": "grpc-proxy"
       },
       {
         "type": "field",
@@ -120,9 +136,65 @@
         "network": "xhttp",
         "security": "reality",
         "xhttpSettings": {
-          "mode": "stream-one",
+          "mode": "stream-up",
           "path": "/{{ foreign_xray.xhttp_path }}",
-          "padding": "64-1024"
+          "extra": {
+            "xPaddingBytes": "100-1000",
+            "scMinPostsIntervalMs": "30-50",
+            "scMaxEachPostBytes": "786432-1048576",
+            "xmux": {
+              "maxConcurrency": "16-32",
+              "cMaxReuseTimes": "64-128",
+              "hMaxRequestTimes": "600-900",
+              "hMaxReusableSecs": "1800-3000"
+            }
+          }
+        },
+        "finalmaskSettings": {
+          "type": "sudoku",
+          "password": "{{ foreign_xray.finalmask_password }}"
+        },
+        "realitySettings": {
+          "serverName": "{{ relay_foreign_sni }}",
+          "fingerprint": "chrome",
+          "publicKey": "{{ foreign_xray.x25519_public }}",
+          "shortId": "{{ foreign_xray.short_id }}"
+        },
+        "sockopt": {
+          "fragment": {
+            "packets": "tlshello",
+            "length": "100-200",
+            "interval": "10-20"
+          }
+        }
+      }
+    },
+    {
+      "protocol": "vless",
+      "tag": "grpc-proxy",
+      "settings": {
+        "vnext": [
+          {
+            "address": "{{ relay_foreign_ip }}",
+            "port": {{ relay_foreign_grpc_port | default(2053) }},
+            "users": [
+              {
+                "id": "{{ foreign_xray.uuid_grpc }}",
+                "encryption": "none"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "grpc",
+        "security": "reality",
+        "grpcSettings": {
+          "serviceName": "{{ foreign_xray.grpc_service_name }}"
+        },
+        "finalmaskSettings": {
+          "type": "sudoku",
+          "password": "{{ foreign_xray.finalmask_password }}"
         },
         "realitySettings": {
           "serverName": "{{ relay_foreign_sni }}",

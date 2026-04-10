@@ -156,6 +156,10 @@
       ansible.builtin.command: ufw allow {{ xray_xhttp_port | default(8443) }}/tcp
       when: enable_xray | default(true) | bool
 
+    - name: Allow gRPC port (TCP)
+      ansible.builtin.command: ufw allow {{ xray_grpc_port | default(2053) }}/tcp
+      when: enable_xray_grpc | default(false) | bool
+
     - name: Allow AmneziaWG UDP port
       ansible.builtin.command: ufw allow {{ awg_port }}/udp
       when: enable_amneziawg | default(false) | bool

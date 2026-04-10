@@ -99,8 +99,9 @@
       XHTTP exit    : {{ relay_link_content.stdout_lines[0] }}
       Hysteria2 exit: {{ relay_link_content.stdout_lines[1] }}
       AWG exit      : {{ relay_link_content.stdout_lines[2] }}
+      gRPC exit     : {{ relay_link_content.stdout_lines[3] }}
       ==================================================
-      All three links use the same server / port / SNI.
+      All four links use the same server / port / SNI.
       Switch exit protocol by choosing a different link.
 
 - name: Save connection links locally

@@ -4,6 +4,7 @@
 #
 #  Deploys: nginx (masquerade site + Let's Encrypt),
 #           Xray VLESS+XHTTP+REALITY (TCP 8443, self-steal),
+#           Xray VLESS+gRPC+REALITY  (TCP 2053, self-steal),
 #           Hysteria2 (UDP 443),
 #           AmneziaWG (UDP 51820),
 #           SSH hardening + UFW.
@@ -28,10 +29,11 @@
     webserver_nginx_port: 4443
 
     # ── Xray ────────────────────────────────────────────────────────────────
-    xray_version:    "v26.2.6"
+    xray_version:    "v26.3.27"
     xray_platform:   "linux-64"
     xray_path:       "/opt/xray"
     xray_xhttp_port: 8443
+    xray_grpc_port:  2053
 
     # ── Hysteria2 ────────────────────────────────────────────────────────────
     hysteria2_version:  "v2.6.1"
@@ -56,9 +58,11 @@
 
   vars:
     enable_xray:      true
+    enable_xray_grpc: true
     enable_amneziawg: true
     enable_hysteria2: true
     xray_xhttp_port:  8443
+    xray_grpc_port:   2053
     awg_port:         51820
     hysteria2_port:   443
     # ssh_port, ssh_user, ssh_public_key_path etc. come from secrets.yaml all.vars

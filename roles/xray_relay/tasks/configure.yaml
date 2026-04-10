@@ -43,6 +43,11 @@
       register: relay_uuid_awg_result
       changed_when: true
 
+    - name: Generate UUID — gRPC exit
+      ansible.builtin.command: "{{ (xray_path, 'xray') | path_join }} uuid"
+      register: relay_uuid_grpc_result
+      changed_when: true
+
     - name: Generate x25519 keypair
       ansible.builtin.command: "{{ (xray_path, 'xray') | path_join }} x25519"
       register: relay_x25519_result
@@ -55,6 +60,7 @@
           uuid:           "{{ relay_uuid_xhttp_result.stdout }}"
           uuid_hy2:       "{{ relay_uuid_hy2_result.stdout }}"
           uuid_awg:       "{{ relay_uuid_awg_result.stdout }}"
+          uuid_grpc:      "{{ relay_uuid_grpc_result.stdout }}"
           x25519_private: "{{ relay_x25519_result.stdout.split('\n')[0].split(': ')[1] }}"
           x25519_public:  "{{ relay_x25519_result.stdout.split('\n')[1].split(': ')[1] }}"
 
@@ -98,6 +104,23 @@
       ansible.builtin.lineinfile:
         path: "{{ (xray_path, 'relay_config_vars.yaml') | path_join }}"
         line: 'uuid_awg: "{{ relay_xray.uuid_awg }}"'
+
+- name: Migrate relay_xray — add uuid_grpc if missing
+  when: relay_vars_stat.stat.exists and relay_xray.uuid_grpc is not defined
+  block:
+    - name: Generate uuid_grpc
+      ansible.builtin.command: "{{ (xray_path, 'xray') | path_join }} uuid"
+      register: migrate_uuid_grpc
+      changed_when: true
+
+    - name: Patch relay_xray with uuid_grpc
+      ansible.builtin.set_fact:
+        relay_xray: "{{ relay_xray | combine({'uuid_grpc': migrate_uuid_grpc.stdout}) }}"
+
+    - name: Persist uuid_grpc
+      ansible.builtin.lineinfile:
+        path: "{{ (xray_path, 'relay_config_vars.yaml') | path_join }}"
+        line: 'uuid_grpc: "{{ relay_xray.uuid_grpc }}"'
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Fetch foreign server credentials

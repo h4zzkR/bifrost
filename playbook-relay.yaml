@@ -11,6 +11,7 @@
 #  Three UUIDs select the exit protocol toward the foreign VPS:
 #
 #    UUID-xhttp  →  VLESS + XHTTP + REALITY  (TCP 8443)
+#    UUID-grpc   →  VLESS + gRPC + REALITY   (TCP 2053)
 #    UUID-hy2    →  Hysteria2 QUIC           (UDP 443)
 #    UUID-awg    →  AmneziaWG tunnel         (UDP 51820)
 #
@@ -30,7 +31,7 @@
     relay_foreign_sni:  "{{ foreign_domain }}"
 
     # ── Xray ────────────────────────────────────────────────────────────────
-    xray_version:    "v26.2.6"
+    xray_version:    "v26.3.27"
     xray_platform:   "linux-64"
     xray_path:       "/opt/xray"
 
@@ -47,6 +48,7 @@
 
     # ── Xray → foreign ──────────────────────────────────────────────────────
     relay_foreign_xhttp_port: 8443
+    relay_foreign_grpc_port:  2053
 
   roles:
     - xray_relay

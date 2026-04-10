@@ -1,1 +1,2 @@
 vless://{{ xray.uuid }}@{{ ansible_host }}:{{ xray_xhttp_port | default(8443) }}/?encryption=none&type=xhttp&path=%2F{{ xray.xhttp_path }}&sni={{ xray_sni_dest }}&fp=chrome&security=reality&pbk={{ xray.x25519_public }}&sid={{ xray.short_id }}#Bifrost-VLESS-XHTTP
+vless://{{ xray.uuid_grpc }}@{{ ansible_host }}:{{ xray_grpc_port | default(2053) }}/?encryption=none&type=grpc&serviceName={{ xray.grpc_service_name }}&sni={{ xray_sni_dest }}&fp=chrome&security=reality&pbk={{ xray.x25519_public }}&sid={{ xray.short_id }}#Bifrost-VLESS-gRPC

@@ -41,6 +41,8 @@
       ========== Xray client connection links ==========
       VLESS+XHTTP+Reality (port {{ xray_xhttp_port | default(8443) }}):
         {{ xray_link_content.stdout_lines[0] }}
+      VLESS+gRPC+Reality  (port {{ xray_grpc_port | default(2053) }}):
+        {{ xray_link_content.stdout_lines[1] }}
       ==================================================
 
 - name: Save connection links locally

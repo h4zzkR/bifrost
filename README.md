@@ -14,6 +14,7 @@ All protocols deploy in two commands; ready-to-import client configs appear loca
 Client
   └─► RU relay VPS  (port 443/TCP, VLESS+REALITY, Russian SNI)
         ├─► [UUID-xhttp] VLESS + XHTTP + REALITY ──► Foreign VPS (TCP 8443)
+        ├─► [UUID-grpc]  VLESS + gRPC + REALITY   ──► Foreign VPS (TCP 2053)
         ├─► [UUID-hy2]   Hysteria2 QUIC           ──► Foreign VPS (UDP 443)
         └─► [UUID-awg]   AmneziaWG tunnel         ──► Foreign VPS (UDP 51820)
                                                           └─► Internet
@@ -21,7 +22,7 @@ Client
 
 The client connects to the **Russian relay** on TCP 443 using VLESS+REALITY with a
 Russian SNI (e.g. `gosuslugi.ru`). The relay forwards traffic to the **foreign VPS** via
-one of three protocols — selected by UUID. All three relay links look identical to
+one of four protocols — selected by UUID. All four relay links look identical to
 the outside: same server, same port, same SNI.
 
 ### Why two hops?
@@ -40,6 +41,7 @@ the connection goes to a Russian IP, and server-to-server traffic is far less sc
 | Protocol | Transport | Port | Notes |
 |---|---|---|---|
 | **VLESS + XHTTP + Reality** | TCP | 8443 | HTTP stream over Reality with self-steal cert. |
+| **VLESS + gRPC + Reality** | TCP | 2053 | HTTP/2 multiplexed stream over Reality. |
 | **Hysteria2** | UDP | 443 | QUIC with Salamander obfuscation. Immune to TCP throttling. |
 | **AmneziaWG** | UDP | 51820 | WireGuard with junk-packet + header obfuscation. |
 
@@ -47,7 +49,7 @@ the connection goes to a Russian IP, and server-to-server traffic is far less sc
 
 | Protocol | Transport | Port | Notes |
 |---|---|---|---|
-| **VLESS + REALITY** | TCP | 443 | Client-facing. Three UUIDs → three exit protocols. |
+| **VLESS + REALITY** | TCP | 443 | Client-facing. Four UUIDs → four exit protocols. |
 
 ### Self-steal camouflage (both VPS)
 
@@ -61,6 +63,7 @@ the TLS cert from it — probers hitting TCP 443 see a genuine HTTPS site, not a
 443/UDP   → Hysteria2             (UDP, no conflict with TCP)
 4443/TCP  → nginx 127.0.0.1      (Xray REALITY cert-steal source)
 8443/TCP  → Xray VLESS+XHTTP+Reality
+2053/TCP  → Xray VLESS+gRPC+Reality
 51820/UDP → AmneziaWG
 ```
 
@@ -185,6 +188,7 @@ The exit protocol is selected by UUID — just pick the link you want.
 
 ```
 vless://UUID-XHTTP@RELAY_IP:443?...#Bifrost-Relay-XHTTP
+vless://UUID-GRPC @RELAY_IP:443?...#Bifrost-Relay-gRPC
 vless://UUID-HY2  @RELAY_IP:443?...#Bifrost-Relay-Hysteria2
 vless://UUID-AWG  @RELAY_IP:443?...#Bifrost-Relay-AWG
 ```
@@ -244,8 +248,8 @@ Both playbooks are **idempotent**. Credentials are persisted on the servers and 
 
 | File | Server | Contents |
 |---|---|---|
-| `/opt/xray/config_vars.yaml` | foreign | Xray UUID, x25519 keys, XHTTP path |
-| `/opt/xray/relay_config_vars.yaml` | relay | Three relay UUIDs, x25519 keys |
+| `/opt/xray/config_vars.yaml` | foreign | Xray UUIDs, x25519 keys, XHTTP path, gRPC service name |
+| `/opt/xray/relay_config_vars.yaml` | relay | Four relay UUIDs, x25519 keys |
 | `/etc/amnezia/amneziawg/awg_vars.yaml` | foreign | AWG server keys + obfuscation params |
 | `/etc/amnezia/amneziawg/relay_vars.yaml` | relay | AWG client keypair |
 | `/opt/hysteria2/vars.yaml` | foreign | Hysteria2 auth + obfs passwords |
@@ -271,6 +275,7 @@ All secrets go in `secrets.yaml`. Version numbers and ports live in the playbook
 | `new_root_password` | secrets.yaml | New root password (empty = keep current) |
 | `xray_version` | playbook-foreign.yaml | Xray-core release tag |
 | `xray_xhttp_port` | playbook-foreign.yaml | VLESS+XHTTP inbound port (default `8443`) |
+| `xray_grpc_port` | playbook-foreign.yaml | VLESS+gRPC inbound port (default `2053`) |
 | `awg_port` | playbook-foreign.yaml | AmneziaWG UDP port (default `51820`) |
 | `hysteria2_port` | playbook-foreign.yaml | Hysteria2 UDP port (default `443`) |
 | `awg_relay_ip` | playbook-relay.yaml | Relay's IP inside AWG subnet (default `10.66.66.3`) |

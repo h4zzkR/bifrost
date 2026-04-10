@@ -40,20 +40,84 @@
       register: xhttp_path_result
       changed_when: true
 
+    - name: Generate UUID — gRPC inbound
+      ansible.builtin.command: "{{ (xray_path, 'xray') | path_join }} uuid"
+      register: uuid_grpc_result
+      changed_when: true
+
+    - name: Generate gRPC service name token
+      ansible.builtin.command: openssl rand -hex 8
+      register: grpc_service_name_result
+      changed_when: true
+
+    - name: Generate Finalmask Sudoku password
+      ansible.builtin.command: openssl rand -hex 16
+      register: finalmask_password_result
+      changed_when: true
+
     - name: Set variables
       ansible.builtin.set_fact:
         xray:
           short_id: "{{ short_id_result.stdout }}"
           uuid: "{{ uuid_result.stdout }}"
+          uuid_grpc: "{{ uuid_grpc_result.stdout }}"
           x25519_private: "{{ x25519_result.stdout.split('\n')[0].split(': ')[1] }}"
           x25519_public: "{{ x25519_result.stdout.split('\n')[1].split(': ')[1] }}"
           xhttp_path: "{{ xhttp_path_result.stdout }}"
+          grpc_service_name: "{{ grpc_service_name_result.stdout }}"
+          finalmask_password: "{{ finalmask_password_result.stdout }}"
 
     - name: Write variables file
       ansible.builtin.template:
         src: variables.yaml.j2
         dest: "{{ (xray_path, 'config_vars.yaml') | path_join }}"
         mode: '0644'
+
+# Migration: add uuid_grpc / grpc_service_name to deployments that predate gRPC
+- name: Migrate xray — add uuid_grpc if missing
+  when: config_vars_stat.stat.exists and xray.uuid_grpc is not defined
+  block:
+    - name: Generate uuid_grpc
+      ansible.builtin.command: "{{ (xray_path, 'xray') | path_join }} uuid"
+      register: migrate_uuid_grpc
+      changed_when: true
+
+    - name: Generate grpc_service_name
+      ansible.builtin.command: openssl rand -hex 8
+      register: migrate_grpc_service_name
+      changed_when: true
+
+    - name: Patch xray with uuid_grpc and grpc_service_name
+      ansible.builtin.set_fact:
+        xray: "{{ xray | combine({'uuid_grpc': migrate_uuid_grpc.stdout, 'grpc_service_name': migrate_grpc_service_name.stdout}) }}"
+
+    - name: Persist uuid_grpc
+      ansible.builtin.lineinfile:
+        path: "{{ (xray_path, 'config_vars.yaml') | path_join }}"
+        line: 'uuid_grpc: "{{ xray.uuid_grpc }}"'
+
+    - name: Persist grpc_service_name
+      ansible.builtin.lineinfile:
+        path: "{{ (xray_path, 'config_vars.yaml') | path_join }}"
+        line: 'grpc_service_name: "{{ xray.grpc_service_name }}"'
+
+# Migration: add finalmask_password to deployments that predate Finalmask Sudoku
+- name: Migrate xray — add finalmask_password if missing
+  when: config_vars_stat.stat.exists and xray.finalmask_password is not defined
+  block:
+    - name: Generate finalmask_password
+      ansible.builtin.command: openssl rand -hex 16
+      register: migrate_finalmask_password
+      changed_when: true
+
+    - name: Patch xray with finalmask_password
+      ansible.builtin.set_fact:
+        xray: "{{ xray | combine({'finalmask_password': migrate_finalmask_password.stdout}) }}"
+
+    - name: Persist finalmask_password
+      ansible.builtin.lineinfile:
+        path: "{{ (xray_path, 'config_vars.yaml') | path_join }}"
+        line: 'finalmask_password: "{{ xray.finalmask_password }}"'
 
 - name: Write new Xray config
   ansible.builtin.template:

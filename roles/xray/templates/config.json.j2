@@ -19,10 +19,76 @@
         "network": "xhttp",
         "security": "reality",
         "xhttpSettings": {
-          "mode": "stream-one",
+          "mode": "stream-up",
           "path": "/{{ xray.xhttp_path }}",
           "keepAliveInterval": 30,
-          "padding": "64-1024"
+          "extra": {
+            "xPaddingBytes": "100-1000",
+            "scMinPostsIntervalMs": "30-50",
+            "scMaxEachPostBytes": "786432-1048576",
+            "xmux": {
+              "maxConcurrency": "16-32",
+              "cMaxReuseTimes": "64-128",
+              "hMaxRequestTimes": "600-900",
+              "hMaxReusableSecs": "1800-3000"
+            }
+          }
+        },
+        "finalmaskSettings": {
+          "type": "sudoku",
+          "password": "{{ xray.finalmask_password }}"
+        },
+        "realitySettings": {
+          "show": false,
+          "dest": "{{ xray_reality_dest | default(xray_sni_dest + ':443') }}",
+          "xver": 0,
+          "serverNames": [
+            "{{ xray_sni_dest }}"
+          ],
+          "privateKey": "{{ xray.x25519_private }}",
+          "minClientVer": "",
+          "maxClientVer": "",
+          "maxTimeDiff": 60000,
+          "shortIds": ["{{ xray.short_id }}"],
+          "limitFallbackUpload": {
+            "afterBytes": 14000,
+            "bytesPerSec": 102400,
+            "burstBytesPerSec": 10485760
+          },
+          "limitFallbackDownload": {
+            "afterBytes": 14000,
+            "bytesPerSec": 2097152,
+            "burstBytesPerSec": 52428800
+          }
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"],
+        "routeOnly": true
+      }
+    },
+    {
+      "port": {{ xray_grpc_port | default(2053) }},
+      "protocol": "vless",
+      "tag": "vless-grpc",
+      "settings": {
+        "clients": [
+          {
+            "id": "{{ xray.uuid_grpc }}"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "grpc",
+        "security": "reality",
+        "grpcSettings": {
+          "serviceName": "{{ xray.grpc_service_name }}"
+        },
+        "finalmaskSettings": {
+          "type": "sudoku",
+          "password": "{{ xray.finalmask_password }}"
         },
         "realitySettings": {
           "show": false,
