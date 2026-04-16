@@ -69,6 +69,22 @@
     mode: '0644'
     force: true
 
+- name: Deploy version-check script
+  ansible.builtin.template:
+    src: check_versions.sh.j2
+    dest: /usr/local/bin/check-versions.sh
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Schedule daily version check (writes to stderr + syslog if updates found)
+  ansible.builtin.cron:
+    name: bifrost-version-check
+    hour: "9"
+    minute: "0"
+    user: root
+    job: "/usr/local/bin/check-versions.sh"
+
 - name: Schedule weekly geo-database update for Xray
   ansible.builtin.cron:
     name: xray-geodat-update

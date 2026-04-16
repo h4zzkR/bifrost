@@ -1,3 +1,11 @@
+# Default catch-all — silently drop direct IP access (no SNI leak)
+server {
+    listen 80  default_server;
+    listen 443 ssl default_server;
+    ssl_reject_handshake on;
+    return 444;
+}
+
 # Public HTTP — Let's Encrypt renewal + redirect to HTTPS
 server {
     listen 80;

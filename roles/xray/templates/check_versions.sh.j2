@@ -1,0 +1,37 @@
+#!/bin/bash
+# check-versions.sh — daily new-version detector for Bifrost VPN stack
+# Writes to stderr (cron mail) and syslog when updates are available.
+# Does NOT auto-update anything.
+
+XRAY_INSTALLED=$(cat /opt/xray/version 2>/dev/null | tr -d '[:space:]')
+HY2_INSTALLED=$(cat /opt/hysteria2/version 2>/dev/null | tr -d '[:space:]')
+
+XRAY_LATEST=$(curl -sf --max-time 10 \
+  "https://api.github.com/repos/XTLS/Xray-core/releases/latest" | \
+  python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])" 2>/dev/null)
+
+HY2_LATEST=$(curl -sf --max-time 10 \
+  "https://api.github.com/repos/apernet/hysteria/releases/latest" | \
+  python3 -c "import sys,json; t=json.load(sys.stdin)['tag_name']; print(t.split('/')[-1])" 2>/dev/null)
+
+AWG_UPDATE=$(apt-get -s upgrade 2>/dev/null | grep "^Inst amneziawg" || true)
+
+MSGS=()
+
+if [ -n "$XRAY_LATEST" ] && [ -n "$XRAY_INSTALLED" ] && [ "$XRAY_INSTALLED" != "$XRAY_LATEST" ]; then
+  MSGS+=("Xray: installed=$XRAY_INSTALLED latest=$XRAY_LATEST")
+fi
+
+if [ -n "$HY2_LATEST" ] && [ -n "$HY2_INSTALLED" ] && [ "$HY2_INSTALLED" != "$HY2_LATEST" ]; then
+  MSGS+=("Hysteria2: installed=$HY2_INSTALLED latest=$HY2_LATEST")
+fi
+
+if [ -n "$AWG_UPDATE" ]; then
+  MSGS+=("AmneziaWG: apt upgrade available")
+fi
+
+for msg in "${MSGS[@]}"; do
+  line="UPDATE AVAILABLE on $(hostname): $msg"
+  echo "$line" >&2
+  logger -t check-versions "$line"
+done

@@ -36,7 +36,7 @@
     xray_path:       "/opt/xray"
 
     # ── Hysteria2 client ─────────────────────────────────────────────────────
-    hysteria2_version:  "v2.6.1"
+    hysteria2_version:  "v2.8.1"
     hysteria2_platform: "linux-amd64"
     hysteria2_path:     "/opt/hysteria2"
     hysteria2_port:     443

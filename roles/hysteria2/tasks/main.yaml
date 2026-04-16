@@ -23,28 +23,3 @@
 - name: Configure Hysteria2
   ansible.builtin.include_tasks: configure.yaml
 
-- name: Create Hysteria2 connection link file on server
-  ansible.builtin.template:
-    src: client_connect_link.txt.j2
-    dest: ~/hysteria2_client_connect_link.txt
-    owner: "{{ ansible_user_id | default(ansible_user) }}"
-    group: "{{ ansible_user_id | default(ansible_user) }}"
-
-- name: Read Hysteria2 connection link
-  ansible.builtin.command: cat ~/hysteria2_client_connect_link.txt
-  register: hy2_link_content
-  changed_when: false
-
-- name: Display Hysteria2 connection link
-  ansible.builtin.debug:
-    msg: |
-      ========== Hysteria2 client connection link ==========
-        {{ hy2_link_content.stdout }}
-      ======================================================
-
-- name: Save Hysteria2 connection link locally
-  ansible.builtin.copy:
-    content: "{{ hy2_link_content.stdout }}"
-    dest: "{{ playbook_dir }}/hysteria2_client_connect_link.txt"
-  delegate_to: localhost
-  become: false

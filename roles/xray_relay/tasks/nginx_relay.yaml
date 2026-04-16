@@ -85,6 +85,11 @@
     state: restarted
     enabled: true
 
+- name: Wait for nginx to be ready on port 80
+  ansible.builtin.wait_for:
+    port: 80
+    timeout: 15
+
 - name: Obtain Let's Encrypt certificate for relay domain
   ansible.builtin.command: >
     certbot certonly --webroot
@@ -95,6 +100,10 @@
       {{ '--staging' if certbot_staging | default(false) | bool else '' }}
   args:
     creates: /etc/letsencrypt/live/{{ relay_domain }}/fullchain.pem
+  register: certbot_result
+  retries: 3
+  delay: 10
+  until: certbot_result is succeeded
 
 # Phase 2: Full config — HTTP redirect + HTTPS on 127.0.0.1:4443 (cert now exists)
 - name: Deploy full nginx config (HTTP redirect + loopback HTTPS on 127.0.0.1:4443)
